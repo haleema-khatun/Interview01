@@ -1,0 +1,27 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Document</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+</head>
+
+<body>
+    <div class="w-full h-screen bg-zinc-900 p-10">
+        <h2 class="px-5 py-3 text-white block">Add New Question</h2>
+        <div class="px-5 py-3 mt-2">
+            <form class="flex flex-col gap-3 justify-center" action="/questions/add" method="post">
+                <input class="bg-zinc-800 px-3 py-2 rounded-md w-1/2" type="text" placeholder="title" name="title">
+                <input class="bg-zinc-800 px-3 py-2 rounded-md w-1/2" type="text" placeholder="difficulty" name="difficulty">
+                <input class="bg-zinc-800 px-3 py-2 rounded-md w-1/2" type="text" placeholder="category" name="category">
+                <input class="bg-zinc-800 px-3 py-2 rounded-md w-1/2" type="text" placeholder="description" name="description">
+                <input class="bg-zinc-800 px-3 py-2 rounded-md w-1/2" name="tags" placeholder="Comma separated tags">
+                <input class="bg-blue-500 px-3 py-2 rounded-md w-20" type="submit" value="submit">
+            </form>
+        </div>
+    </div>
+</body>
+
+</html>

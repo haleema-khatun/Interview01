@@ -1,12 +1,12 @@
 const express = require('express');
 const router = express.Router();
+const { getQuestions , addQuestion, adminForm } = require('../controllers/questionController');
 
-router.get('/',(req,res)=>{
-  res.send("its working");
-})
 
-router.post('/add', (req, res) => {
-  res.send("Received POST");
-});
+router.get('/', getQuestions);
+
+router.post('/add', addQuestion);
+
+router.get('/admin',adminForm)
 
 module.exports = router;
