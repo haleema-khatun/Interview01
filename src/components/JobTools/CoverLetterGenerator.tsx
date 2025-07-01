@@ -98,15 +98,15 @@ Clearly address the specific job title and company name.
 
 Be tailored to the job posting, referencing key responsibilities or required skills.
 
-Highlight relevant accomplishments and experience from the candidate’s resume, especially those that directly align with the job.
+Highlight relevant accomplishments and experience from the candidate's resume, especially those that directly align with the job.
 
-Demonstrate genuine enthusiasm and motivation for the position and the company’s mission, products, or industry.
+Demonstrate genuine enthusiasm and motivation for the position and the company's mission, products, or industry.
 
 Maintain a professional, articulate, yet conversational tone—engaging without being overly casual.
 
 Be structured as a formal business letter, including:
 
-A header with date, employer’s name, company, and address
+A header with date, employer's name, company, and address
 
 A salutation (e.g., "Dear Hiring Manager")
 
@@ -118,7 +118,7 @@ Body paragraphs with relevant experiences and specific examples
 
 Conclusion with a call to action and reiteration of interest
 
-Include knowledge of the company’s values, products, or culture, integrated naturally into the narrative.
+Include knowledge of the company's values, products, or culture, integrated naturally into the narrative.
 
 Be at least 150 words, ideally between 250–350 words.
 
@@ -128,35 +128,7 @@ Respond with only the final cover letter content—no explanations, no markdown,
 
         try {
           // Use AI evaluation service to generate the cover letter
-          const response = await AIEvaluationService.evaluateWithBestAvailable({
-            question: 'Generate a professional cover letter',
-            answer: prompt,
-            ratingMode: 'lenient'
-          });
-
-          // Extract the cover letter from the AI response
-          let coverLetter = '';
-          
-          // Try to extract from feedback text first (most likely to contain the letter)
-          if (response.feedback_text && response.feedback_text.length > 200) {
-            coverLetter = response.feedback_text;
-          } 
-          // If not in feedback, try suggested answer
-          else if (response.suggested_answer && response.suggested_answer.length > 200) {
-            coverLetter = response.suggested_answer;
-          }
-          // If still not found, combine strengths and improvements
-          else {
-            coverLetter = response.strengths.join('\n\n') + '\n\n' + response.improvements.join('\n\n');
-          }
-          
-          // Clean up the cover letter text
-          coverLetter = coverLetter
-            .replace(/^```/, '')
-            .replace(/```$/, '')
-            .replace(/^Cover Letter:/, '')
-            .replace(/^Here's your cover letter:/, '')
-            .trim();
+          const coverLetter = await AIEvaluationService.generateContentWithBestAvailable(prompt);
           
           setGeneratedCoverLetter(coverLetter);
           

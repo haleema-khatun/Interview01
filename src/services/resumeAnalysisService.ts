@@ -1,4 +1,5 @@
 import { AIEvaluationService } from './aiEvaluationService';
+import { extractKeywordsFromJD } from './keywordUtils';
 
 export interface ResumeAnalysis {
   overallScore: number;
@@ -19,18 +20,25 @@ export interface ResumeAnalysis {
   };
   recommendations: string[];
   aiProvider?: string;
+  aiSections?: {
+    strengths?: string;
+    missing?: string;
+    suggestions?: string;
+    score?: string;
+  };
+  extractedKeywords?: string[];
 }
 
 export class ResumeAnalysisService {
   static async analyzeResume(resumeText: string, jobDescription?: string): Promise<ResumeAnalysis> {
-    // Check if we have API keys for real AI analysis
+    const extractedKeywords = jobDescription ? extractKeywordsFromJD(jobDescription) : [];
     const availableKeys = AIEvaluationService.hasApiKeys();
     const hasAnyKey = availableKeys.groq || availableKeys.openai || availableKeys.gemini;
     
     if (hasAnyKey && resumeText.trim().length > 100) {
       try {
         console.log('🤖 Using AI for resume analysis...');
-        return await this.analyzeWithAI(resumeText, jobDescription);
+        return await this.analyzeWithAI(resumeText, jobDescription, extractedKeywords);
       } catch (error) {
         console.warn('⚠️ AI analysis failed, falling back to mock analysis:', error);
         return this.generateMockAnalysis(resumeText, jobDescription);
@@ -41,30 +49,24 @@ export class ResumeAnalysisService {
     }
   }
 
-  private static async analyzeWithAI(resumeText: string, jobDescription?: string): Promise<ResumeAnalysis> {
-    const prompt = this.buildAnalysisPrompt(resumeText, jobDescription);
-    
+  private static async analyzeWithAI(resumeText: string, jobDescription?: string, extractedKeywords: string[] = []): Promise<ResumeAnalysis> {
+    const prompt = this.buildAnalysisPrompt(resumeText, jobDescription, extractedKeywords);
     try {
-      // Use the AI evaluation service to analyze the resume
       const response = await AIEvaluationService.evaluateWithBestAvailable({
-        question: 'Analyze this resume and provide comprehensive feedback',
+        question: 'Resume vs Job Description Analysis',
         answer: prompt,
         ratingMode: 'lenient'
       });
-
-      // For now, we'll enhance the mock analysis with AI insights
-      // In a real implementation, you'd parse the AI response
+      const aiSections = parseAIAnalysisSections(response.feedback_text || response.suggested_answer || '');
       const mockAnalysis = this.generateMockAnalysis(resumeText, jobDescription);
-      
-      // Add AI provider info
       const availableKeys = AIEvaluationService.hasApiKeys();
       const aiProvider = availableKeys.groq ? 'Groq' : availableKeys.openai ? 'OpenAI' : 'Gemini';
-      
       return {
         ...mockAnalysis,
         aiProvider,
-        // You could enhance specific sections based on AI response here
-        overallScore: Math.min(95, mockAnalysis.overallScore + 5), // Slight boost for AI analysis
+        aiSections,
+        extractedKeywords,
+        overallScore: aiSections.score ? parseInt(aiSections.score.match(/\d+/)?.[0] || '80', 10) : mockAnalysis.overallScore
       };
     } catch (error) {
       console.error('❌ AI resume analysis failed:', error);
@@ -72,44 +74,32 @@ export class ResumeAnalysisService {
     }
   }
 
-  private static buildAnalysisPrompt(resumeText: string, jobDescription?: string): string {
+  private static buildAnalysisPrompt(resumeText: string, jobDescription?: string, extractedKeywords: string[] = []): string {
     return `
-Please analyze this resume and provide comprehensive feedback. ${jobDescription ? 'Also compare it against the provided job description for keyword matching and relevance.' : ''}
+You are an expert resume reviewer. Compare the following resume to the provided job description.
 
-RESUME CONTENT:
+==== JOB DESCRIPTION ====
+${jobDescription || 'N/A'}
+
+==== EXTRACTED KEYWORDS ====
+${extractedKeywords.join(', ') || 'N/A'}
+
+==== RESUME ====
 ${resumeText}
 
-${jobDescription ? `
-JOB DESCRIPTION:
-${jobDescription}
-` : ''}
+Please answer in the following sections:
 
-Please provide analysis in the following areas:
-1. Contact Information - completeness and professionalism
-2. Professional Summary - clarity and impact
-3. Work Experience - relevance, achievements, and quantifiable results
-4. Skills - organization and relevance
-5. Education - formatting and relevance
-6. Overall Formatting - readability and ATS compatibility
+1. Strengths: List the candidate's strengths that match the job description and keywords.
+2. Missing or Weak Areas: List any important skills or keywords from the job description that are missing or weak in the resume.
+3. Suggestions: Give specific, actionable suggestions to improve the resume for this job.
+4. Overall Match Score: Give a match score (0-100) and a brief summary.
 
-${jobDescription ? '7. Keyword Analysis - matching keywords found and missing' : ''}
-
-Focus on:
-- Specific, actionable feedback
-- ATS (Applicant Tracking System) compatibility
-- Quantifiable achievements and impact
-- Professional presentation
-- Industry best practices
-
-Provide scores (1-100) for each section and overall recommendations.
-`;
+Return your answer in clear sections with headings for each part. Do not introduce yourself. Only use the information in the resume, job description, and keywords above.`;
   }
 
   private static generateMockAnalysis(resumeText: string, jobDescription?: string): ResumeAnalysis {
-    // Analyze the actual resume text for more accurate mock analysis
     const textLower = resumeText.toLowerCase();
     
-    // Check for various resume elements
     const hasEmail = /@/.test(resumeText);
     const hasPhone = /\d{3}[-.\s]?\d{3}[-.\s]?\d{4}/.test(resumeText);
     const hasLinkedIn = /linkedin/.test(textLower);
@@ -118,7 +108,6 @@ Provide scores (1-100) for each section and overall recommendations.
     const hasTechnicalSkills = /javascript|python|react|node|sql|aws|docker|kubernetes/.test(textLower);
     const hasEducation = /university|college|degree|bachelor|master|phd/.test(textLower);
     
-    // Calculate scores based on actual content
     const contactScore = (hasEmail ? 30 : 0) + (hasPhone ? 30 : 0) + (hasLinkedIn ? 25 : 0) + 15;
     const summaryScore = resumeText.length > 500 ? 75 : 60;
     const experienceScore = (hasQuantifiableResults ? 40 : 20) + (hasActionVerbs ? 30 : 10) + 20;
@@ -128,7 +117,6 @@ Provide scores (1-100) for each section and overall recommendations.
     
     const overallScore = Math.round((contactScore + summaryScore + experienceScore + skillsScore + educationScore + formattingScore) / 6);
 
-    // Generate keyword analysis if job description is provided
     let keywordAnalysis = {
       found: ['JavaScript', 'React', 'Node.js', 'Python', 'SQL'],
       missing: ['TypeScript', 'AWS', 'Docker', 'Kubernetes', 'GraphQL'],
@@ -136,7 +124,6 @@ Provide scores (1-100) for each section and overall recommendations.
     };
 
     if (jobDescription) {
-      // Simple keyword matching
       const jobKeywords = jobDescription.toLowerCase().match(/\b(javascript|python|react|node|sql|aws|docker|kubernetes|typescript|graphql|mongodb|postgresql|redis|git|agile|scrum)\b/g) || [];
       const resumeKeywords = resumeText.toLowerCase().match(/\b(javascript|python|react|node|sql|aws|docker|kubernetes|typescript|graphql|mongodb|postgresql|redis|git|agile|scrum)\b/g) || [];
       
@@ -220,4 +207,25 @@ Provide scores (1-100) for each section and overall recommendations.
       ]
     };
   }
+}
+
+export function parseAIAnalysisSections(aiText: string): { strengths?: string; missing?: string; suggestions?: string; score?: string } {
+  if (!aiText) return {};
+  const sections: any = {};
+  const regexes = {
+    strengths: /strengths[:\-\n]*([\s\S]*?)(?=\n\s*(Missing|Weak|Suggestions|Overall|$))/i,
+    missing: /(missing|weak)[ areas]*[:\-\n]*([\s\S]*?)(?=\n\s*(Strengths|Suggestions|Overall|$))/i,
+    suggestions: /suggestions?[:\-\n]*([\s\S]*?)(?=\n\s*(Strengths|Missing|Weak|Overall|$))/i,
+    score: /(overall match score|score|summary)[:\-\n]*([\s\S]*)/i
+  };
+  const text = aiText.replace(/\r/g, '');
+  const strengthsMatch = text.match(regexes.strengths);
+  const missingMatch = text.match(regexes.missing);
+  const suggestionsMatch = text.match(regexes.suggestions);
+  const scoreMatch = text.match(regexes.score);
+  if (strengthsMatch) sections.strengths = strengthsMatch[1].trim();
+  if (missingMatch) sections.missing = (missingMatch[2] || missingMatch[1]).trim();
+  if (suggestionsMatch) sections.suggestions = suggestionsMatch[1].trim();
+  if (scoreMatch) sections.score = (scoreMatch[2] || scoreMatch[1]).trim();
+  return sections;
 }

@@ -1,5 +1,5 @@
-import React, { useState, useEffect } from 'react';
-import { ArrowLeft, MessageSquare, Play, RotateCcw, CheckCircle, Send, User, Bot, Loader, Brain, Zap } from 'lucide-react';
+import React, { useState, useEffect, useRef } from 'react';
+import { ArrowLeft, MessageSquare, Play, RotateCcw, CheckCircle, Send, User, Bot, Loader, Brain, Zap, Sparkles, Target, Star, Heart, ThumbsUp, Award, TrendingUp } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { AIEvaluationService } from '../../services/ai/aiEvaluationService';
 import { useTheme } from '../../contexts/ThemeContext';
@@ -24,6 +24,7 @@ interface Message {
 export const AskAway: React.FC = () => {
   const navigate = useNavigate();
   const { theme } = useTheme();
+  const messagesEndRef = useRef<HTMLDivElement>(null);
   const [currentQuestion, setCurrentQuestion] = useState('');
   const [userAnswer, setUserAnswer] = useState('');
   const [isAnswering, setIsAnswering] = useState(false);
@@ -39,6 +40,7 @@ export const AskAway: React.FC = () => {
   ]);
   const [inputMessage, setInputMessage] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+  const [isTyping, setIsTyping] = useState(false);
 
   // Check if AI is available on component mount
   const [availableKeys, setAvailableKeys] = useState<{groq: boolean, openai: boolean, gemini: boolean}>({
@@ -50,6 +52,11 @@ export const AskAway: React.FC = () => {
   useEffect(() => {
     checkApiKeys();
   }, []);
+
+  // Auto-scroll to bottom when new messages arrive
+  useEffect(() => {
+    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+  }, [messages]);
 
   const checkApiKeys = () => {
     const keys = AIEvaluationService.hasApiKeys();
@@ -99,6 +106,7 @@ export const AskAway: React.FC = () => {
     }
 
     setIsLoading(true);
+    setIsTyping(true);
 
     // Add user answer to chat
     const userMessage: Message = {
@@ -120,14 +128,28 @@ export const AskAway: React.FC = () => {
         console.log('🤖 Using AI for answer evaluation...');
         
         try {
-          const evaluation = await AIEvaluationService.evaluateWithBestAvailable({
-            question: currentQuestion,
-            answer: userAnswer,
-            ratingMode: 'lenient'
-          });
+          // Create a comprehensive evaluation prompt
+          const evaluationPrompt = `Evaluate this interview answer:
 
-          score = evaluation.overall_score;
-          feedback = `**Score: ${score}/10**\n\n${evaluation.feedback_text}\n\n**Strengths:**\n${evaluation.strengths.map(s => `• ${s}`).join('\n')}\n\n**Areas for Improvement:**\n${evaluation.improvements.map(i => `• ${i}`).join('\n')}`;
+QUESTION: ${currentQuestion}
+
+ANSWER: ${userAnswer}
+
+Please provide a comprehensive evaluation including:
+1. Overall score (1-10)
+2. Detailed feedback on strengths and areas for improvement
+3. Specific suggestions for using the STAR method
+4. Tips for making the answer more compelling
+
+Format your response as a detailed evaluation with clear sections.`;
+
+          const aiResponse = await AIEvaluationService.generateContentWithBestAvailable(evaluationPrompt);
+          
+          // Parse the AI response to extract score and feedback
+          const scoreMatch = aiResponse.match(/(?:score|rating|grade).*?(\d+)/i);
+          score = scoreMatch ? Math.min(10, Math.max(1, parseInt(scoreMatch[1]))) : 7;
+          
+          feedback = `**Score: ${score}/10**\n\n${aiResponse}\n\n💡 **Next Steps:** You can ask for another question, request clarification, or practice a specific type of question!`;
           
           const aiProvider = availableKeys.groq ? 'Groq' : availableKeys.openai ? 'OpenAI' : 'Gemini';
           toast.success(`✅ Answer evaluated using ${aiProvider} AI!`);
@@ -146,33 +168,39 @@ export const AskAway: React.FC = () => {
         toast.success('Answer evaluated! Add API key in Settings for AI-powered feedback.');
       }
 
-      // Add AI feedback to chat
-      const feedbackMessage: Message = {
-        id: (Date.now() + 1).toString(),
-        type: 'assistant',
-        content: `📊 **Feedback for your answer:**\n\n${feedback}\n\n💡 **Next Steps:** You can ask for another question, request clarification, or practice a specific type of question!`,
-        timestamp: new Date()
-      };
-      setMessages(prev => [...prev, feedbackMessage]);
+      // Simulate typing effect
+      setTimeout(() => {
+        setIsTyping(false);
+        
+        // Add AI feedback to chat
+        const feedbackMessage: Message = {
+          id: (Date.now() + 1).toString(),
+          type: 'assistant',
+          content: feedback,
+          timestamp: new Date()
+        };
+        setMessages(prev => [...prev, feedbackMessage]);
 
-      // Save session
-      const newSession: QASession = {
-        id: Date.now().toString(),
-        question: currentQuestion,
-        userAnswer: userAnswer,
-        feedback: feedback,
-        score: score,
-        completed: true
-      };
+        // Save session
+        const newSession: QASession = {
+          id: Date.now().toString(),
+          question: currentQuestion,
+          userAnswer: userAnswer,
+          feedback: feedback,
+          score: score,
+          completed: true
+        };
 
-      setSessions(prev => [newSession, ...prev]);
-      setIsAnswering(false);
-      setUserAnswer('');
+        setSessions(prev => [newSession, ...prev]);
+        setIsAnswering(false);
+        setUserAnswer('');
+      }, 1000);
 
     } catch (error) {
       console.error('❌ Answer evaluation failed:', error);
       toast.error('Failed to evaluate answer. Please try again.');
       
+      setIsTyping(false);
       const errorMessage: Message = {
         id: (Date.now() + 1).toString(),
         type: 'assistant',
@@ -251,11 +279,13 @@ ${improvements.map(i => `• ${i}`).join('\n')}
     setMessages(prev => [...prev, userMessage]);
     setInputMessage('');
     setIsLoading(true);
+    setIsTyping(true);
 
     // Check if user wants a new question
     const userInput = inputMessage.toLowerCase();
     if (userInput.includes('new question') || userInput.includes('another question') || userInput.includes('next question')) {
       setTimeout(() => {
+        setIsTyping(false);
         startNewQuestion();
         setIsLoading(false);
       }, 1000);
@@ -264,6 +294,7 @@ ${improvements.map(i => `• ${i}`).join('\n')}
 
     // Enhanced AI responses based on message content
     setTimeout(() => {
+      setIsTyping(false);
       let response = '';
 
       if (userInput.includes('help') || userInput.includes('how to')) {
@@ -328,50 +359,66 @@ ${improvements.map(i => `• ${i}`).join('\n')}
   const hasAnyApiKey = availableKeys.groq || availableKeys.openai || availableKeys.gemini;
 
   return (
-    <div className="min-h-screen bg-gray-50 dark:bg-gray-900 transition-colors duration-200">
-      <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        {/* Header */}
+    <div className="min-h-screen bg-gradient-to-br from-purple-50 via-white to-blue-50 dark:from-gray-900 dark:via-gray-800 dark:to-gray-900 transition-colors duration-200">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        {/* Enhanced Header */}
         <div className="mb-8">
           <button
             onClick={() => navigate('/dashboard')}
-            className="flex items-center space-x-2 text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-200 transition-colors mb-4"
+            className="flex items-center space-x-2 text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-200 transition-colors mb-4 group"
           >
-            <ArrowLeft className="h-4 w-4" />
+            <ArrowLeft className="h-4 w-4 group-hover:-translate-x-1 transition-transform duration-200" />
             <span>Back to Dashboard</span>
           </button>
 
-          <div className="flex items-center space-x-3 mb-4">
-            <div className="p-2 bg-purple-600 dark:bg-purple-500 rounded-lg transition-colors duration-200">
-              <MessageSquare className="h-6 w-6 text-white" />
+          <div className="flex items-center space-x-4 mb-6">
+            <div className="relative">
+              <div className="p-3 bg-gradient-to-r from-purple-500 to-blue-500 rounded-2xl shadow-lg transition-all duration-200 hover:scale-105">
+                <MessageSquare className="h-8 w-8 text-white" />
+              </div>
+              <div className="absolute -top-1 -right-1 w-4 h-4 bg-purple-400 rounded-full animate-pulse"></div>
             </div>
             <div>
-              <h1 className="text-3xl font-bold text-gray-900 dark:text-white transition-colors duration-200">Ask Away</h1>
-              <p className="text-gray-600 dark:text-gray-400 transition-colors duration-200">Interactive Q&A practice with AI-powered feedback</p>
+              <h1 className="text-4xl font-bold bg-gradient-to-r from-purple-600 to-blue-600 bg-clip-text text-transparent transition-colors duration-200">
+                Ask Away
+              </h1>
+              <p className="text-gray-600 dark:text-gray-400 transition-colors duration-200 text-lg">
+                Interactive Q&A practice with AI-powered feedback ✨
+              </p>
             </div>
           </div>
         </div>
 
-        {/* AI Status Notice */}
+        {/* Enhanced AI Status Notice */}
         <div className="mb-6">
           {hasAnyApiKey ? (
-            <div className="bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-700 rounded-xl p-4 transition-colors duration-200">
-              <div className="flex items-center space-x-3">
-                <Brain className="h-5 w-5 text-green-600 dark:text-green-400" />
-                <div className="text-sm text-green-800 dark:text-green-200 transition-colors duration-200">
-                  <p className="font-medium">🤖 AI Feedback Active</p>
-                  <p>
+            <div className="bg-gradient-to-r from-green-50 to-emerald-50 dark:from-green-900/20 dark:to-emerald-900/20 border border-green-200 dark:border-green-700 rounded-2xl p-6 transition-all duration-200 hover:shadow-lg">
+              <div className="flex items-center space-x-4">
+                <div className="p-3 bg-gradient-to-r from-green-500 to-emerald-500 rounded-xl">
+                  <Brain className="h-6 w-6 text-white" />
+                </div>
+                <div className="flex-1">
+                  <p className="font-semibold text-green-800 dark:text-green-200 text-lg transition-colors duration-200">
+                    🤖 AI Feedback Active
+                  </p>
+                  <p className="text-green-700 dark:text-green-300 transition-colors duration-200">
                     Using {availableKeys.groq ? 'Groq (Fastest)' : availableKeys.openai ? 'OpenAI' : 'Gemini'} for intelligent answer evaluation and feedback!
                   </p>
                 </div>
+                <Sparkles className="h-6 w-6 text-green-500 dark:text-green-400 animate-pulse" />
               </div>
             </div>
           ) : (
-            <div className="bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-700 rounded-xl p-4 transition-colors duration-200">
-              <div className="flex items-start space-x-2">
-                <Zap className="h-5 w-5 text-yellow-600 dark:text-yellow-400 mt-0.5 flex-shrink-0" />
-                <div className="text-sm text-yellow-800 dark:text-yellow-200 transition-colors duration-200">
-                  <p className="font-medium mb-1">Enhanced Feedback Mode</p>
-                  <p>
+            <div className="bg-gradient-to-r from-yellow-50 to-orange-50 dark:from-yellow-900/20 dark:to-orange-900/20 border border-yellow-200 dark:border-yellow-700 rounded-2xl p-6 transition-all duration-200">
+              <div className="flex items-start space-x-4">
+                <div className="p-3 bg-gradient-to-r from-yellow-500 to-orange-500 rounded-xl">
+                  <Zap className="h-6 w-6 text-white" />
+                </div>
+                <div className="flex-1">
+                  <p className="font-semibold text-yellow-800 dark:text-yellow-200 text-lg mb-2 transition-colors duration-200">
+                    Enhanced Feedback Mode
+                  </p>
+                  <p className="text-yellow-700 dark:text-yellow-300 transition-colors duration-200">
                     You're getting smart feedback analysis. For AI-powered evaluation, add your API key in{' '}
                     <button
                       onClick={() => navigate('/settings')}
@@ -388,28 +435,33 @@ ${improvements.map(i => `• ${i}`).join('\n')}
         </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-4 gap-8">
-          {/* Main Chat Interface */}
+          {/* Enhanced Main Chat Interface */}
           <div className="lg:col-span-3">
-            <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 h-[700px] flex flex-col transition-colors duration-200">
-              {/* Chat Header */}
-              <div className="p-4 border-b border-gray-200 dark:border-gray-700 bg-gradient-to-r from-purple-50 to-blue-50 dark:from-purple-900/20 dark:to-blue-900/20 rounded-t-xl transition-colors duration-200">
+            <div className="bg-white dark:bg-gray-800 rounded-3xl shadow-2xl border border-gray-200 dark:border-gray-700 h-[700px] flex flex-col overflow-hidden transition-all duration-200 hover:shadow-3xl">
+              {/* Enhanced Chat Header */}
+              <div className="p-6 border-b border-gray-200 dark:border-gray-700 bg-gradient-to-r from-purple-50 via-blue-50 to-indigo-50 dark:from-purple-900/20 dark:via-blue-900/20 dark:to-indigo-900/20 rounded-t-3xl transition-colors duration-200">
                 <div className="flex items-center justify-between">
-                  <div className="flex items-center space-x-3">
-                    <div className="p-2 bg-purple-600 dark:bg-purple-500 rounded-lg transition-colors duration-200">
-                      <MessageSquare className="h-5 w-5 text-white" />
+                  <div className="flex items-center space-x-4">
+                    <div className="relative">
+                      <div className="p-3 bg-gradient-to-r from-purple-500 to-blue-500 rounded-2xl shadow-lg">
+                        <MessageSquare className="h-6 w-6 text-white" />
+                      </div>
+                      <div className="absolute -top-1 -right-1 w-3 h-3 bg-purple-400 rounded-full animate-pulse"></div>
                     </div>
                     <div>
-                      <h2 className="font-semibold text-gray-900 dark:text-white transition-colors duration-200">AI Interview Assistant</h2>
+                      <h2 className="text-xl font-bold text-gray-900 dark:text-white transition-colors duration-200">
+                        AI Interview Assistant
+                      </h2>
                       <p className="text-sm text-gray-600 dark:text-gray-400 transition-colors duration-200">
                         {hasAnyApiKey ? 'AI-powered feedback' : 'Enhanced feedback'} • Practice & Improve
                       </p>
                     </div>
                   </div>
-                  <div className="flex items-center space-x-2">
+                  <div className="flex items-center space-x-3">
                     {!sessionActive && (
                       <button
                         onClick={startNewQuestion}
-                        className="bg-purple-600 dark:bg-purple-500 text-white px-4 py-2 rounded-lg font-medium hover:bg-purple-700 dark:hover:bg-purple-600 transition-colors duration-200 flex items-center space-x-2"
+                        className="bg-gradient-to-r from-purple-500 to-blue-500 text-white px-6 py-3 rounded-2xl font-semibold hover:from-purple-600 hover:to-blue-600 transition-all duration-200 flex items-center space-x-2 shadow-lg hover:shadow-xl transform hover:scale-105"
                       >
                         <Play className="h-4 w-4" />
                         <span>Start Practice</span>
@@ -418,7 +470,7 @@ ${improvements.map(i => `• ${i}`).join('\n')}
                     {sessions.length > 0 && (
                       <button
                         onClick={resetSession}
-                        className="bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 px-4 py-2 rounded-lg font-medium hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors duration-200 flex items-center space-x-2"
+                        className="bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 px-4 py-2 rounded-xl font-medium hover:bg-gray-200 dark:hover:bg-gray-600 transition-all duration-200 flex items-center space-x-2"
                       >
                         <RotateCcw className="h-4 w-4" />
                         <span>Reset</span>
@@ -428,106 +480,146 @@ ${improvements.map(i => `• ${i}`).join('\n')}
                 </div>
               </div>
 
-              {/* Messages */}
-              <div className="flex-1 overflow-y-auto p-6 space-y-4">
-                {messages.map((message) => (
+              {/* Enhanced Messages */}
+              <div className="flex-1 overflow-y-auto p-6 space-y-6 bg-gradient-to-b from-gray-50 to-white dark:from-gray-900 dark:to-gray-800">
+                {messages.map((message, index) => (
                   <div
                     key={message.id}
-                    className={`flex ${message.type === 'user' ? 'justify-end' : 'justify-start'}`}
+                    className={`flex ${message.type === 'user' ? 'justify-end' : 'justify-start'} animate-in slide-in-from-bottom-2 duration-300`}
+                    style={{ animationDelay: `${index * 100}ms` }}
                   >
                     <div className={`flex items-start space-x-3 max-w-4xl ${message.type === 'user' ? 'flex-row-reverse space-x-reverse' : ''}`}>
-                      <div className={`p-2 rounded-full flex-shrink-0 ${message.type === 'user' ? 'bg-blue-600 dark:bg-blue-500' : 'bg-purple-600 dark:bg-purple-500'} transition-colors duration-200`}>
+                      <div className={`p-3 rounded-2xl flex-shrink-0 shadow-lg transition-all duration-200 hover:scale-105 ${
+                        message.type === 'user' 
+                          ? 'bg-gradient-to-r from-blue-500 to-blue-600' 
+                          : 'bg-gradient-to-r from-purple-500 to-blue-500'
+                      }`}>
                         {message.type === 'user' ? (
-                          <User className="h-4 w-4 text-white" />
+                          <User className="h-5 w-5 text-white" />
                         ) : (
-                          <Bot className="h-4 w-4 text-white" />
+                          <Bot className="h-5 w-5 text-white" />
                         )}
                       </div>
-                      <div className={`p-4 rounded-2xl max-w-3xl ${
+                      <div className={`p-6 rounded-3xl max-w-3xl shadow-lg transition-all duration-200 hover:shadow-xl ${
                         message.type === 'user' 
-                          ? 'bg-blue-600 dark:bg-blue-500 text-white rounded-br-md' 
-                          : 'bg-gray-100 dark:bg-gray-700 text-gray-900 dark:text-white rounded-bl-md'
-                      } transition-colors duration-200`}>
-                        <div className="whitespace-pre-wrap text-sm leading-relaxed">{message.content}</div>
-                        <p className={`text-xs mt-2 ${
-                          message.type === 'user' ? 'text-blue-100 dark:text-blue-200' : 'text-gray-500 dark:text-gray-400'
-                        } transition-colors duration-200`}>
-                          {message.timestamp.toLocaleTimeString()}
-                        </p>
+                          ? 'bg-gradient-to-r from-blue-500 to-blue-600 text-white rounded-br-md' 
+                          : 'bg-white dark:bg-gray-700 text-gray-900 dark:text-white rounded-bl-md border border-gray-200 dark:border-gray-600'
+                      }`}>
+                        <div className="whitespace-pre-wrap text-base leading-relaxed font-medium">{message.content}</div>
+                        <div className={`flex items-center justify-between mt-4 ${
+                          message.type === 'user' ? 'text-blue-100' : 'text-gray-500 dark:text-gray-400'
+                        }`}>
+                          <p className="text-sm font-medium">
+                            {message.timestamp.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                          </p>
+                          {message.type === 'assistant' && (
+                            <div className="flex items-center space-x-2">
+                              <button className="p-1 hover:bg-gray-100 dark:hover:bg-gray-600 rounded-full transition-colors duration-200">
+                                <ThumbsUp className="h-4 w-4" />
+                              </button>
+                              <button className="p-1 hover:bg-gray-100 dark:hover:bg-gray-600 rounded-full transition-colors duration-200">
+                                <Heart className="h-4 w-4" />
+                              </button>
+                            </div>
+                          )}
+                        </div>
                       </div>
                     </div>
                   </div>
                 ))}
                 
-                {isLoading && (
-                  <div className="flex justify-start">
+                {isTyping && (
+                  <div className="flex justify-start animate-in slide-in-from-bottom-2 duration-300">
                     <div className="flex items-start space-x-3 max-w-3xl">
-                      <div className="p-2 rounded-full bg-purple-600 dark:bg-purple-500 transition-colors duration-200">
-                        <Bot className="h-4 w-4 text-white" />
+                      <div className="p-3 rounded-2xl bg-gradient-to-r from-purple-500 to-blue-500 shadow-lg">
+                        <Bot className="h-5 w-5 text-white" />
                       </div>
-                      <div className="p-4 rounded-2xl rounded-bl-md bg-gray-100 dark:bg-gray-700 transition-colors duration-200">
+                      <div className="p-6 rounded-3xl rounded-bl-md bg-white dark:bg-gray-700 border border-gray-200 dark:border-gray-600 shadow-lg">
                         <div className="flex items-center space-x-2">
-                          <Loader className="h-4 w-4 animate-spin text-purple-600 dark:text-purple-400" />
-                          <span className="text-gray-600 dark:text-gray-300 text-sm transition-colors duration-200">
-                            {isAnswering ? 'Evaluating your answer...' : 'Thinking...'}
+                          <div className="flex space-x-1">
+                            <div className="w-2 h-2 bg-purple-500 rounded-full animate-bounce"></div>
+                            <div className="w-2 h-2 bg-purple-500 rounded-full animate-bounce" style={{ animationDelay: '0.1s' }}></div>
+                            <div className="w-2 h-2 bg-purple-500 rounded-full animate-bounce" style={{ animationDelay: '0.2s' }}></div>
+                          </div>
+                          <span className="text-gray-600 dark:text-gray-300 font-medium">
+                            {isAnswering ? 'Evaluating your answer...' : 'AI is typing...'}
                           </span>
                         </div>
                       </div>
                     </div>
                   </div>
                 )}
+                
+                <div ref={messagesEndRef} />
               </div>
 
-              {/* Input Area */}
-              <div className="border-t border-gray-200 dark:border-gray-700 p-4 bg-gray-50 dark:bg-gray-750 rounded-b-xl transition-colors duration-200">
+              {/* Enhanced Input Area */}
+              <div className="border-t border-gray-200 dark:border-gray-700 p-6 bg-gradient-to-r from-gray-50 to-gray-100 dark:from-gray-800 dark:to-gray-750 rounded-b-3xl transition-colors duration-200">
                 {isAnswering ? (
-                  <div className="space-y-3">
-                    <div className="bg-purple-50 dark:bg-purple-900/20 border border-purple-200 dark:border-purple-700 rounded-lg p-3 transition-colors duration-200">
-                      <p className="text-sm font-medium text-purple-900 dark:text-purple-300 mb-1 transition-colors duration-200">Current Question:</p>
+                  <div className="space-y-4">
+                    <div className="bg-gradient-to-r from-purple-50 to-blue-50 dark:from-purple-900/20 dark:to-blue-900/20 border border-purple-200 dark:border-purple-700 rounded-2xl p-4 transition-colors duration-200">
+                      <div className="flex items-center space-x-2 mb-2">
+                        <Target className="h-4 w-4 text-purple-600 dark:text-purple-400" />
+                        <p className="text-sm font-semibold text-purple-900 dark:text-purple-300 transition-colors duration-200">Current Question:</p>
+                      </div>
                       <p className="text-sm text-purple-800 dark:text-purple-200 transition-colors duration-200">{currentQuestion}</p>
                     </div>
-                    <div className="flex space-x-3">
-                      <textarea
-                        value={userAnswer}
-                        onChange={(e) => setUserAnswer(e.target.value)}
-                        onKeyPress={handleKeyPress}
-                        placeholder="Type your detailed answer here... Use the STAR method for behavioral questions!"
-                        rows={3}
-                        className="flex-1 px-4 py-3 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent resize-none bg-white dark:bg-gray-700 text-gray-900 dark:text-white placeholder-gray-500 dark:placeholder-gray-400 transition-colors duration-200"
-                      />
+                    <div className="flex space-x-4">
+                      <div className="flex-1 relative">
+                        <textarea
+                          value={userAnswer}
+                          onChange={(e) => setUserAnswer(e.target.value)}
+                          onKeyPress={handleKeyPress}
+                          placeholder="Type your detailed answer here... Use the STAR method for behavioral questions!"
+                          rows={3}
+                          className="w-full px-6 py-4 border-2 border-gray-300 dark:border-gray-600 rounded-2xl focus:ring-4 focus:ring-purple-500/20 focus:border-purple-500 resize-none bg-white dark:bg-gray-700 text-gray-900 dark:text-white placeholder-gray-500 dark:placeholder-gray-400 transition-all duration-200 shadow-lg"
+                        />
+                        <div className="absolute right-4 top-4 text-gray-400 dark:text-gray-500">
+                          <MessageSquare className="h-5 w-5" />
+                        </div>
+                      </div>
                       <button
                         onClick={submitAnswer}
                         disabled={!userAnswer.trim() || isLoading}
-                        className="bg-purple-600 dark:bg-purple-500 text-white px-6 py-3 rounded-lg font-medium hover:bg-purple-700 dark:hover:bg-purple-600 focus:ring-2 focus:ring-purple-500 focus:ring-offset-2 dark:focus:ring-offset-gray-800 transition-colors duration-200 disabled:opacity-50 disabled:cursor-not-allowed flex items-center space-x-2"
+                        className="bg-gradient-to-r from-purple-500 to-blue-500 text-white px-8 py-4 rounded-2xl font-semibold hover:from-purple-600 hover:to-blue-600 focus:ring-4 focus:ring-purple-500/20 transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed flex items-center space-x-3 shadow-lg hover:shadow-xl transform hover:scale-105"
                       >
                         {isLoading ? (
-                          <Loader className="h-4 w-4 animate-spin" />
+                          <Loader className="h-5 w-5 animate-spin" />
                         ) : (
-                          <CheckCircle className="h-4 w-4" />
+                          <CheckCircle className="h-5 w-5" />
                         )}
                         <span>{isLoading ? 'Evaluating...' : 'Submit Answer'}</span>
                       </button>
                     </div>
-                    <div className="text-xs text-gray-500 dark:text-gray-400 transition-colors duration-200">
-                      {userAnswer.trim().length} characters • {userAnswer.trim().split(/\s+/).filter(word => word.length > 0).length} words
+                    <div className="flex items-center justify-between text-xs text-gray-500 dark:text-gray-400 transition-colors duration-200">
+                      <span>{userAnswer.trim().length} characters • {userAnswer.trim().split(/\s+/).filter(word => word.length > 0).length} words</span>
+                      <div className="flex items-center space-x-2">
+                        <Star className="h-3 w-3" />
+                        <span>Use STAR method for better answers</span>
+                      </div>
                     </div>
                   </div>
                 ) : (
-                  <div className="flex space-x-3">
-                    <textarea
-                      value={inputMessage}
-                      onChange={(e) => setInputMessage(e.target.value)}
-                      onKeyPress={handleKeyPress}
-                      placeholder="Ask me about interview questions, strategies, or request a new practice question..."
-                      rows={2}
-                      className="flex-1 px-4 py-3 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent resize-none bg-white dark:bg-gray-700 text-gray-900 dark:text-white placeholder-gray-500 dark:placeholder-gray-400 transition-colors duration-200"
-                    />
+                  <div className="flex space-x-4">
+                    <div className="flex-1 relative">
+                      <textarea
+                        value={inputMessage}
+                        onChange={(e) => setInputMessage(e.target.value)}
+                        onKeyPress={handleKeyPress}
+                        placeholder="Ask me about interview questions, strategies, or request a new practice question..."
+                        rows={2}
+                        className="w-full px-6 py-4 border-2 border-gray-300 dark:border-gray-600 rounded-2xl focus:ring-4 focus:ring-purple-500/20 focus:border-purple-500 resize-none bg-white dark:bg-gray-700 text-gray-900 dark:text-white placeholder-gray-500 dark:placeholder-gray-400 transition-all duration-200 shadow-lg"
+                      />
+                      <div className="absolute right-4 top-4 text-gray-400 dark:text-gray-500">
+                        <MessageSquare className="h-5 w-5" />
+                      </div>
+                    </div>
                     <button
                       onClick={sendMessage}
                       disabled={!inputMessage.trim() || isLoading}
-                      className="bg-purple-600 dark:bg-purple-500 text-white px-6 py-3 rounded-lg font-medium hover:bg-purple-700 dark:hover:bg-purple-600 focus:ring-2 focus:ring-purple-500 focus:ring-offset-2 dark:focus:ring-offset-gray-800 transition-colors duration-200 disabled:opacity-50 disabled:cursor-not-allowed flex items-center space-x-2"
+                      className="bg-gradient-to-r from-purple-500 to-blue-500 text-white px-8 py-4 rounded-2xl font-semibold hover:from-purple-600 hover:to-blue-600 focus:ring-4 focus:ring-purple-500/20 transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed flex items-center space-x-3 shadow-lg hover:shadow-xl transform hover:scale-105"
                     >
-                      <Send className="h-4 w-4" />
+                      <Send className="h-5 w-5" />
                       <span>Send</span>
                     </button>
                   </div>
@@ -536,26 +628,31 @@ ${improvements.map(i => `• ${i}`).join('\n')}
             </div>
           </div>
 
-          {/* Session History Sidebar */}
+          {/* Enhanced Session History Sidebar */}
           <div className="lg:col-span-1">
-            <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 p-6 sticky top-8 transition-colors duration-200">
-              <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4 transition-colors duration-200">Practice History</h3>
+            <div className="bg-white dark:bg-gray-800 rounded-3xl shadow-2xl border border-gray-200 dark:border-gray-700 p-6 sticky top-8 transition-all duration-200 hover:shadow-3xl">
+              <div className="flex items-center space-x-3 mb-6">
+                <div className="p-2 bg-gradient-to-r from-purple-500 to-blue-500 rounded-xl">
+                  <Award className="h-5 w-5 text-white" />
+                </div>
+                <h3 className="text-lg font-bold text-gray-900 dark:text-white transition-colors duration-200">Practice History</h3>
+              </div>
               
               {sessions.length === 0 ? (
                 <div className="text-center py-8">
-                  <MessageSquare className="h-8 w-8 text-gray-300 dark:text-gray-600 mx-auto mb-2 transition-colors duration-200" />
+                  <MessageSquare className="h-12 w-12 text-gray-300 dark:text-gray-600 mx-auto mb-3 transition-colors duration-200" />
                   <p className="text-gray-500 dark:text-gray-400 text-sm transition-colors duration-200">No practice sessions yet</p>
                   <p className="text-gray-400 dark:text-gray-500 text-xs mt-1 transition-colors duration-200">Start practicing to see your progress!</p>
                 </div>
               ) : (
                 <div className="space-y-4 max-h-96 overflow-y-auto">
                   {sessions.map((session, index) => (
-                    <div key={session.id} className="border border-gray-200 dark:border-gray-700 rounded-lg p-4 hover:bg-gray-50 dark:hover:bg-gray-750 transition-colors duration-200">
-                      <div className="flex items-center justify-between mb-2">
-                        <span className="text-xs font-medium text-purple-600 dark:text-purple-400 bg-purple-100 dark:bg-purple-900/30 px-2 py-1 rounded-full transition-colors duration-200">
+                    <div key={session.id} className="border-2 border-gray-200 dark:border-gray-700 rounded-2xl p-4 hover:bg-gray-50 dark:hover:bg-gray-750 transition-all duration-200 hover:border-purple-300 dark:hover:border-purple-600 hover:shadow-lg">
+                      <div className="flex items-center justify-between mb-3">
+                        <span className="text-xs font-semibold text-purple-600 dark:text-purple-400 bg-purple-100 dark:bg-purple-900/30 px-3 py-1 rounded-full transition-colors duration-200">
                           Session {sessions.length - index}
                         </span>
-                        <span className={`text-xs font-medium px-2 py-1 rounded-full ${
+                        <span className={`text-xs font-semibold px-3 py-1 rounded-full ${
                           session.score >= 8 ? 'bg-green-100 dark:bg-green-900/30 text-green-800 dark:text-green-300' :
                           session.score >= 6 ? 'bg-yellow-100 dark:bg-yellow-900/30 text-yellow-800 dark:text-yellow-300' :
                           'bg-red-100 dark:bg-red-900/30 text-red-800 dark:text-red-300'
@@ -564,7 +661,7 @@ ${improvements.map(i => `• ${i}`).join('\n')}
                         </span>
                       </div>
                       
-                      <h4 className="font-medium text-gray-900 dark:text-white text-sm mb-2 line-clamp-2 transition-colors duration-200">
+                      <h4 className="font-semibold text-gray-900 dark:text-white text-sm mb-2 line-clamp-2 transition-colors duration-200">
                         {session.question}
                       </h4>
                       
@@ -581,18 +678,21 @@ ${improvements.map(i => `• ${i}`).join('\n')}
               )}
 
               {sessions.length > 0 && (
-                <div className="mt-6 pt-4 border-t border-gray-200 dark:border-gray-700 transition-colors duration-200">
-                  <div className="text-center mb-4">
-                    <p className="text-sm text-gray-600 dark:text-gray-400 mb-2 transition-colors duration-200">Average Score</p>
-                    <p className="text-2xl font-bold text-purple-600 dark:text-purple-400 transition-colors duration-200">
+                <div className="mt-6 pt-6 border-t border-gray-200 dark:border-gray-700 transition-colors duration-200">
+                  <div className="text-center mb-6">
+                    <div className="flex items-center justify-center space-x-2 mb-2">
+                      <TrendingUp className="h-5 w-5 text-purple-600 dark:text-purple-400" />
+                      <p className="text-sm font-semibold text-gray-600 dark:text-gray-400 transition-colors duration-200">Average Score</p>
+                    </div>
+                    <p className="text-3xl font-bold bg-gradient-to-r from-purple-600 to-blue-600 bg-clip-text text-transparent transition-colors duration-200">
                       {(sessions.reduce((sum, s) => sum + s.score, 0) / sessions.length).toFixed(1)}/10
                     </p>
                   </div>
                   
-                  <div className="space-y-2">
+                  <div className="space-y-3">
                     <button
                       onClick={startNewQuestion}
-                      className="w-full bg-purple-600 dark:bg-purple-500 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-purple-700 dark:hover:bg-purple-600 transition-colors duration-200 flex items-center justify-center space-x-2"
+                      className="w-full bg-gradient-to-r from-purple-500 to-blue-500 text-white px-6 py-3 rounded-2xl text-sm font-semibold hover:from-purple-600 hover:to-blue-600 transition-all duration-200 flex items-center justify-center space-x-2 shadow-lg hover:shadow-xl transform hover:scale-105"
                     >
                       <Play className="h-4 w-4" />
                       <span>New Question</span>
@@ -600,7 +700,7 @@ ${improvements.map(i => `• ${i}`).join('\n')}
                     
                     <button
                       onClick={resetSession}
-                      className="w-full bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 px-4 py-2 rounded-lg text-sm font-medium hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors duration-200 flex items-center justify-center space-x-2"
+                      className="w-full bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 px-6 py-3 rounded-2xl text-sm font-semibold hover:bg-gray-200 dark:hover:bg-gray-600 transition-all duration-200 flex items-center justify-center space-x-2"
                     >
                       <RotateCcw className="h-4 w-4" />
                       <span>Reset Session</span>
@@ -612,30 +712,57 @@ ${improvements.map(i => `• ${i}`).join('\n')}
           </div>
         </div>
 
-        {/* Quick Actions */}
-        <div className="mt-8 grid grid-cols-1 md:grid-cols-3 gap-4">
+        {/* Enhanced Quick Actions */}
+        <div className="mt-8 grid grid-cols-1 md:grid-cols-3 gap-6">
           <button
             onClick={() => setInputMessage("Can you help me practice behavioral questions using the STAR method?")}
-            className="p-4 bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 hover:border-purple-300 dark:hover:border-purple-600 transition-colors duration-200 text-left group"
+            className="p-6 bg-white dark:bg-gray-800 rounded-2xl border-2 border-gray-200 dark:border-gray-700 hover:border-purple-300 dark:hover:border-purple-600 transition-all duration-200 text-left group shadow-lg hover:shadow-xl transform hover:scale-105"
           >
-            <h3 className="font-medium text-gray-900 dark:text-white mb-1 group-hover:text-purple-600 dark:group-hover:text-purple-400 transition-colors duration-200">Practice Behavioral Questions</h3>
-            <p className="text-sm text-gray-600 dark:text-gray-400 transition-colors duration-200">Get help with STAR method responses</p>
+            <div className="flex items-center space-x-4 mb-3">
+              <div className="p-3 bg-gradient-to-r from-green-500 to-emerald-500 rounded-xl">
+                <Target className="h-6 w-6 text-white" />
+              </div>
+              <h3 className="font-semibold text-gray-900 dark:text-white group-hover:text-purple-600 dark:group-hover:text-purple-400 transition-colors duration-200 text-lg">
+                Practice Behavioral Questions
+              </h3>
+            </div>
+            <p className="text-gray-600 dark:text-gray-400 transition-colors duration-200">
+              Get help with STAR method responses and behavioral interview prep
+            </p>
           </button>
           
           <button
             onClick={() => setInputMessage("I'm feeling nervous about my upcoming interview. Any advice?")}
-            className="p-4 bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 hover:border-purple-300 dark:hover:border-purple-600 transition-colors duration-200 text-left group"
+            className="p-6 bg-white dark:bg-gray-800 rounded-2xl border-2 border-gray-200 dark:border-gray-700 hover:border-purple-300 dark:hover:border-purple-600 transition-all duration-200 text-left group shadow-lg hover:shadow-xl transform hover:scale-105"
           >
-            <h3 className="font-medium text-gray-900 dark:text-white mb-1 group-hover:text-purple-600 dark:group-hover:text-purple-400 transition-colors duration-200">Interview Confidence</h3>
-            <p className="text-sm text-gray-600 dark:text-gray-400 transition-colors duration-200">Get support and confidence tips</p>
+            <div className="flex items-center space-x-4 mb-3">
+              <div className="p-3 bg-gradient-to-r from-blue-500 to-purple-500 rounded-xl">
+                <Star className="h-6 w-6 text-white" />
+              </div>
+              <h3 className="font-semibold text-gray-900 dark:text-white group-hover:text-purple-600 dark:group-hover:text-purple-400 transition-colors duration-200 text-lg">
+                Interview Confidence
+              </h3>
+            </div>
+            <p className="text-gray-600 dark:text-gray-400 transition-colors duration-200">
+              Get support and confidence tips to ace your interview
+            </p>
           </button>
           
           <button
             onClick={() => setInputMessage("What are some good questions to ask the interviewer?")}
-            className="p-4 bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 hover:border-purple-300 dark:hover:border-purple-600 transition-colors duration-200 text-left group"
+            className="p-6 bg-white dark:bg-gray-800 rounded-2xl border-2 border-gray-200 dark:border-gray-700 hover:border-purple-300 dark:hover:border-purple-600 transition-all duration-200 text-left group shadow-lg hover:shadow-xl transform hover:scale-105"
           >
-            <h3 className="font-medium text-gray-900 dark:text-white mb-1 group-hover:text-purple-600 dark:group-hover:text-purple-400 transition-colors duration-200">Questions to Ask</h3>
-            <p className="text-sm text-gray-600 dark:text-gray-400 transition-colors duration-200">Learn what to ask your interviewer</p>
+            <div className="flex items-center space-x-4 mb-3">
+              <div className="p-3 bg-gradient-to-r from-purple-500 to-pink-500 rounded-xl">
+                <MessageSquare className="h-6 w-6 text-white" />
+              </div>
+              <h3 className="font-semibold text-gray-900 dark:text-white group-hover:text-purple-600 dark:group-hover:text-purple-400 transition-colors duration-200 text-lg">
+                Questions to Ask
+              </h3>
+            </div>
+            <p className="text-gray-600 dark:text-gray-400 transition-colors duration-200">
+              Learn what to ask your interviewer to show engagement
+            </p>
           </button>
         </div>
       </div>

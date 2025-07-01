@@ -59,7 +59,7 @@ export const Dashboard: React.FC = () => {
     setLoading(true);
     try {
       let allQs: Question[] = [];
-      
+
       // Load questions based on filters
       if (selectedCategory !== 'all') {
         allQs = getQuestionsByCategory(selectedCategory);
@@ -70,19 +70,12 @@ export const Dashboard: React.FC = () => {
       } else if (selectedSubject !== 'all') {
         allQs = getQuestionsBySubject(selectedSubject);
       } else {
-        // Load a balanced set of questions from each category
-        const behavioralQuestions = getQuestionsByCategory('behavioral');
-        const technicalQuestions = getQuestionsByCategory('technical');
-        const situationalQuestions = getQuestionsByCategory('situational');
-        
-        // Take a subset from each category to ensure variety
-        allQs = [
-          ...behavioralQuestions.slice(0, 15),
-          ...technicalQuestions.slice(0, 15),
-          ...situationalQuestions.slice(0, 15)
-        ];
+        // Load ALL questions by default
+        // Import allQuestions from data
+        const { allQuestions } = await import('../../data/questions');
+        allQs = allQuestions;
       }
-      
+
       setQuestions(allQs);
       setFilteredQuestions(allQs);
     } catch (error) {

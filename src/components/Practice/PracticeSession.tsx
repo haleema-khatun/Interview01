@@ -25,6 +25,60 @@ import {
 import toast from 'react-hot-toast';
 import { AIEvaluationService } from '../../services/ai/aiEvaluationService';
 
+// Add this at the top of your file or in a .d.ts file
+declare global {
+  interface Window {
+    SpeechRecognition: any;
+    webkitSpeechRecognition: any;
+  }
+}
+
+// Add proper types for speech recognition
+interface SpeechRecognitionEvent {
+  resultIndex: number;
+  results: SpeechRecognitionResultList;
+}
+
+interface SpeechRecognitionErrorEvent {
+  error: string;
+  message?: string;
+}
+
+interface SpeechRecognitionResultList {
+  length: number;
+  [index: number]: SpeechRecognitionResult;
+}
+
+interface SpeechRecognitionResult {
+  isFinal: boolean;
+  [index: number]: SpeechRecognitionAlternative;
+}
+
+interface SpeechRecognitionAlternative {
+  transcript: string;
+  confidence: number;
+}
+
+interface SpeechRecognition extends EventTarget {
+  continuous: boolean;
+  interimResults: boolean;
+  lang: string;
+  start(): void;
+  stop(): void;
+  abort(): void;
+  onresult: ((event: SpeechRecognitionEvent) => void) | null;
+  onerror: ((event: SpeechRecognitionErrorEvent) => void) | null;
+  onend: (() => void) | null;
+  onstart: (() => void) | null;
+  onaudiostart: (() => void) | null;
+  onaudioend: (() => void) | null;
+  onsoundstart: (() => void) | null;
+  onsoundend: (() => void) | null;
+  onspeechstart: (() => void) | null;
+  onspeechend: (() => void) | null;
+  onnomatch: (() => void) | null;
+}
+
 interface PresenceMonitoringReport {
   sessionDuration: number;
   totalChecks: number;
@@ -79,7 +133,7 @@ export const PracticeSession: React.FC = () => {
   const lastTranscript = useRef('');
 
   // Debug logging function
-  const addDebugLog = (message: string, type: 'info' | 'success' | 'error' = 'info') => {
+  const addDebugLog = (message: string, type: 'info' | 'success' | 'error' | 'warning' = 'info') => {
     const timestamp = new Date().toLocaleTimeString();
     const logMessage = `[${timestamp}] ${message}`;
     console.log(`🔧 ${logMessage}`);
@@ -89,6 +143,8 @@ export const PracticeSession: React.FC = () => {
       toast.error(message);
     } else if (type === 'success') {
       toast.success(message);
+    } else if (type === 'warning') {
+      toast(message, { icon: '⚠️' });
     }
   };
 
@@ -148,46 +204,161 @@ export const PracticeSession: React.FC = () => {
   };
 
   const initializeSpeechRecognition = () => {
-    if ('webkitSpeechRecognition' in window || 'SpeechRecognition' in window) {
-      const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
-      const recognition = new SpeechRecognition();
-      
-      recognition.continuous = true;
-      recognition.interimResults = false; // Changed to false to avoid duplicates
-      recognition.lang = 'en-US';
-
-      recognition.onresult = (event) => {
-        let transcript = '';
-        for (let i = event.resultIndex; i < event.results.length; i++) {
-          if (event.results[i].isFinal) {
-            transcript += event.results[i][0].transcript;
-          }
-        }
-        
-        // Only append if we have new content
-        if (transcript && transcript !== lastTranscript.current) {
-          lastTranscript.current = transcript;
-          setAnswer(prev => prev + ' ' + transcript);
-        }
-      };
-
-      recognition.onerror = (event) => {
-        addDebugLog(`Speech recognition error: ${event.error}`, 'error');
-        setIsRecording(false);
-      };
-
-      recognition.onend = () => {
-        if (isRecording) {
-          // If still recording, restart recognition
-          recognition.start();
-          addDebugLog('Restarting speech recognition', 'info');
-        } else {
-          setIsRecording(false);
-        }
-      };
-
-      setRecognition(recognition);
+    const SpeechRecognitionClass = window.SpeechRecognition || window.webkitSpeechRecognition;
+    if (!SpeechRecognitionClass) {
+      addDebugLog('Speech recognition not supported in this browser', 'error');
+      return;
     }
+    
+    const recognition = new SpeechRecognitionClass();
+    
+    // Configure recognition settings
+    recognition.continuous = true;
+    recognition.interimResults = false;
+    recognition.lang = 'en-US';
+    
+    // Add timeout to prevent hanging
+    let recognitionTimeout: NodeJS.Timeout;
+
+    recognition.onstart = () => {
+      addDebugLog('Speech recognition started', 'success');
+      // Set a timeout to restart if no results after 10 seconds
+      recognitionTimeout = setTimeout(() => {
+        if (isRecording) {
+          addDebugLog('Speech recognition timeout, restarting...', 'info');
+          recognition.stop();
+        }
+      }, 10000);
+    };
+
+    recognition.onresult = (event: SpeechRecognitionEvent) => {
+      // Clear timeout when we get results
+      if (recognitionTimeout) {
+        clearTimeout(recognitionTimeout);
+      }
+      
+      let transcript = '';
+      for (let i = event.resultIndex; i < event.results.length; i++) {
+        if (event.results[i].isFinal) {
+          transcript += event.results[i][0].transcript;
+        }
+      }
+      
+      if (transcript && transcript !== lastTranscript.current) {
+        lastTranscript.current = transcript;
+        setAnswer(prev => prev + ' ' + transcript);
+        addDebugLog(`Transcript: ${transcript}`, 'success');
+      }
+    };
+
+    recognition.onerror = (event: SpeechRecognitionErrorEvent) => {
+      // Clear timeout on error
+      if (recognitionTimeout) {
+        clearTimeout(recognitionTimeout);
+      }
+      
+      let errorMessage = `Speech recognition error: ${event.error}`;
+      let errorType: 'error' | 'warning' = 'error';
+      
+      // Handle specific error types
+      switch (event.error) {
+        case 'network':
+          errorMessage = 'Network error: Please check your internet connection and try again. This can happen due to firewall or proxy settings.';
+          errorType = 'error';
+          break;
+        case 'not-allowed':
+          errorMessage = 'Microphone access denied. Please allow microphone permissions and refresh the page.';
+          errorType = 'error';
+          break;
+        case 'no-speech':
+          errorMessage = 'No speech detected. Please speak clearly and try again.';
+          errorType = 'warning';
+          break;
+        case 'audio-capture':
+          errorMessage = 'Audio capture error. Please check your microphone and try again.';
+          errorType = 'error';
+          break;
+        case 'service-not-allowed':
+          errorMessage = 'Speech recognition service not allowed. Please check your browser settings.';
+          errorType = 'error';
+          break;
+        case 'bad-grammar':
+          errorMessage = 'Grammar error in speech recognition.';
+          errorType = 'warning';
+          break;
+        case 'language-not-supported':
+          errorMessage = 'Language not supported. Please try with English.';
+          errorType = 'error';
+          break;
+        default:
+          errorMessage = `Speech recognition error: ${event.error}. Please try again.`;
+          errorType = 'error';
+      }
+      
+      addDebugLog(errorMessage, errorType);
+      setIsRecording(false);
+      
+      // For network errors, try to restart after a delay
+      if (event.error === 'network' && isRecording) {
+        setTimeout(() => {
+          if (isRecording) {
+            addDebugLog('Attempting to restart speech recognition after network error...', 'info');
+            try {
+              recognition.start();
+            } catch (e) {
+              addDebugLog('Failed to restart speech recognition', 'error');
+            }
+          }
+        }, 2000);
+      }
+    };
+
+    recognition.onend = () => {
+      // Clear timeout
+      if (recognitionTimeout) {
+        clearTimeout(recognitionTimeout);
+      }
+      
+      if (isRecording) {
+        // Add a small delay before restarting to prevent rapid restarts
+        setTimeout(() => {
+          if (isRecording) {
+            try {
+              recognition.start();
+              addDebugLog('Restarting speech recognition', 'info');
+            } catch (e) {
+              addDebugLog('Failed to restart speech recognition', 'error');
+              setIsRecording(false);
+            }
+          }
+        }, 100);
+      } else {
+        setIsRecording(false);
+      }
+    };
+
+    recognition.onaudiostart = () => {
+      addDebugLog('Audio capture started', 'info');
+    };
+
+    recognition.onaudioend = () => {
+      addDebugLog('Audio capture ended', 'info');
+    };
+
+    recognition.onspeechstart = () => {
+      addDebugLog('Speech detected', 'info');
+    };
+
+    recognition.onspeechend = () => {
+      addDebugLog('Speech ended', 'info');
+    };
+
+    recognition.onnomatch = () => {
+      addDebugLog('No speech match found', 'warning');
+    };
+
+    setRecognition(recognition);
+    addDebugLog('Speech recognition initialized successfully', 'success');
   };
 
   const toggleRecording = () => {
@@ -197,15 +368,25 @@ export const PracticeSession: React.FC = () => {
     }
 
     if (isRecording) {
-      recognition.stop();
-      setIsRecording(false);
-      addDebugLog('Recording stopped');
+      try {
+        recognition.stop();
+        setIsRecording(false);
+        addDebugLog('Recording stopped');
+      } catch (e) {
+        addDebugLog('Error stopping recording', 'error');
+        setIsRecording(false);
+      }
     } else {
       // Reset last transcript when starting new recording
       lastTranscript.current = '';
-      recognition.start();
-      setIsRecording(true);
-      addDebugLog('Recording started');
+      try {
+        recognition.start();
+        setIsRecording(true);
+        addDebugLog('Recording started');
+      } catch (e) {
+        addDebugLog('Error starting recording. Please check microphone permissions.', 'error');
+        setIsRecording(false);
+      }
     }
   };
 

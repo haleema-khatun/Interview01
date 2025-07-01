@@ -14,11 +14,13 @@ import {
   BarChart3
 } from 'lucide-react';
 import toast from 'react-hot-toast';
+import * as cocoSsd from '@tensorflow-models/coco-ssd';
+import '@tensorflow/tfjs';
 
 interface AdvancedCameraProctorProps {
   isEnabled: boolean;
   onCameraReady: (isReady: boolean) => void;
-  onViolation: (type: 'face_not_detected' | 'multiple_faces' | 'looking_away' | 'face_obscured' | 'suspicious_movement') => void;
+  onViolation: (type: 'face_not_detected' | 'multiple_faces' | 'looking_away' | 'face_obscured' | 'suspicious_movement' | 'electronic_device_detected') => void;
   onFaceReport?: (report: FaceMonitoringReport) => void;
 }
 
@@ -46,6 +48,7 @@ interface FaceMonitoringReport {
     lookingAway: number;
     faceObscured: number;
     suspiciousMovement: number;
+    electronicDeviceDetected: number;
   };
   headPoseStats: {
     averageYaw: number;
@@ -73,7 +76,7 @@ export const AdvancedCameraProctor: React.FC<AdvancedCameraProctorProps> = ({
 }) => {
   const webcamRef = useRef<Webcam>(null);
   const overlayCanvasRef = useRef<HTMLCanvasElement>(null);
-  const detectionIntervalRef = useRef<number>();
+  const detectionIntervalRef = useRef<ReturnType<typeof setInterval>>();
   
   const [cameraPermission, setCameraPermission] = useState<'granted' | 'denied' | 'pending'>('pending');
   const [modelsLoaded, setModelsLoaded] = useState(false);
@@ -103,6 +106,8 @@ export const AdvancedCameraProctor: React.FC<AdvancedCameraProctorProps> = ({
   const [blinkHistory, setBlinkHistory] = useState<number[]>([]);
   const [modelLoadAttempts, setModelLoadAttempts] = useState(0);
   const [modelLoadError, setModelLoadError] = useState<string | null>(null);
+
+  const [cocoModel, setCocoModel] = useState<any>(null);
 
   // Load face-api.js models with better error handling and retry mechanism
   const loadModels = useCallback(async () => {
@@ -342,6 +347,7 @@ export const AdvancedCameraProctor: React.FC<AdvancedCameraProctorProps> = ({
         }
 
         checkFaceAPIViolations(detections);
+        detectDevices(video);
       } else {
         setFaceMetrics(prev => ({ ...prev, faceCount: 0, confidence: 0 }));
         handleViolation('face_not_detected', 'high');
@@ -439,6 +445,11 @@ export const AdvancedCameraProctor: React.FC<AdvancedCameraProctorProps> = ({
         high: '🚨 Excessive movement detected',
         medium: '⚠️ Please remain still',
         low: 'ℹ️ Movement detected'
+      },
+      electronic_device_detected: {
+        high: '🚨 Electronic device detected in frame!',
+        medium: '⚠️ Possible device detected',
+        low: 'ℹ️ Unusual object detected'
       }
     };
 
@@ -468,6 +479,7 @@ export const AdvancedCameraProctor: React.FC<AdvancedCameraProctorProps> = ({
           lookingAway: violations.filter(v => v.type === 'looking_away').length,
           faceObscured: violations.filter(v => v.type === 'face_obscured').length,
           suspiciousMovement: violations.filter(v => v.type === 'suspicious_movement').length,
+          electronicDeviceDetected: 0,
         },
         headPoseStats: {
           averageYaw: 0,
@@ -546,6 +558,7 @@ export const AdvancedCameraProctor: React.FC<AdvancedCameraProctorProps> = ({
         lookingAway: violations.filter(v => v.type === 'looking_away').length,
         faceObscured: violations.filter(v => v.type === 'face_obscured').length,
         suspiciousMovement: violations.filter(v => v.type === 'suspicious_movement').length,
+        electronicDeviceDetected: 0,
       },
       headPoseStats: {
         averageYaw,
@@ -657,6 +670,25 @@ export const AdvancedCameraProctor: React.FC<AdvancedCameraProctorProps> = ({
     setCameraPermission('denied');
     onCameraReady(false);
     toast.error('Failed to access camera. Please check permissions.');
+  };
+
+  useEffect(() => {
+    cocoSsd.load().then(setCocoModel);
+  }, []);
+
+  const detectDevices = async (video: HTMLVideoElement) => {
+    if (!cocoModel || !video) return;
+    const predictions = await cocoModel.detect(video);
+    console.log('COCO-SSD predictions:', predictions); // Debug: See what objects are detected
+    // Make detection case-insensitive and more robust
+    const deviceDetected = predictions.some((pred: { class: string }) =>
+      ['cell phone', 'laptop', 'tv', 'monitor', 'remote', 'keyboard', 'mouse', 'tablet', 'computer'].some(device =>
+        pred.class && pred.class.toLowerCase().includes(device)
+      )
+    );
+    if (deviceDetected) {
+      handleViolation('electronic_device_detected', 'high');
+    }
   };
 
   if (!isEnabled) {
@@ -815,185 +847,19 @@ export const AdvancedCameraProctor: React.FC<AdvancedCameraProctorProps> = ({
                  faceMetrics.faceCount === 1 ? '✓ Face Detected' : 
                  `⚠ ${faceMetrics.faceCount} Faces`}
               </div>
-              
-              {faceMetrics.confidence > 0 && (
-                <div className="bg-blue-500 text-white px-2 py-1 rounded text-xs font-medium">
-                  Confidence: {(faceMetrics.confidence * 100).toFixed(0)}%
+              {/* Multiple faces warning */}
+              {faceMetrics.faceCount > 1 && (
+                <div className="bg-yellow-500 text-white px-2 py-1 rounded text-xs font-medium z-10">
+                  Warning: Multiple faces detected!
+                </div>
+              )}
+              {/* Device detection not available warning */}
+              {!cocoModel && (
+                <div className="bg-red-500 text-white px-2 py-1 rounded text-xs font-medium z-10">
+                  Device detection not available
                 </div>
               )}
             </div>
-
-            {/* Recording indicator */}
-            {isMonitoring && (
-              <div className="absolute top-2 right-2 flex items-center space-x-1 bg-red-500 text-white px-2 py-1 rounded text-xs font-medium">
-                <div className="w-2 h-2 bg-white rounded-full animate-pulse"></div>
-                <span>MONITORING</span>
-              </div>
-            )}
-
-            {/* Head Pose Indicator */}
-            {faceMetrics.faceCount > 0 && (
-              <div className="absolute bottom-2 left-2 bg-black bg-opacity-50 text-white px-2 py-1 rounded text-xs">
-                Yaw: {faceMetrics.headPose.yaw.toFixed(1)}° | 
-                Pitch: {faceMetrics.headPose.pitch.toFixed(1)}° | 
-                Roll: {faceMetrics.headPose.roll.toFixed(1)}°
-              </div>
-            )}
-
-            {/* Blink Detection */}
-            {faceMetrics.eyeAspectRatio > 0 && (
-              <div className="absolute bottom-2 right-2 bg-black bg-opacity-50 text-white px-2 py-1 rounded text-xs">
-                EAR: {faceMetrics.eyeAspectRatio.toFixed(3)} | 
-                Blinks: {blinkHistory.length}
-              </div>
-            )}
-          </div>
-        </div>
-
-        {/* Monitoring Dashboard */}
-        <div className="space-y-4">
-          {/* Face Detection Status */}
-          <div className="bg-gray-50 dark:bg-gray-700 rounded-lg p-4 transition-colors duration-200">
-            <h4 className="font-medium text-gray-900 dark:text-white mb-3 transition-colors duration-200">Face Detection Status</h4>
-            <div className="space-y-2 text-sm">
-              <div className="flex items-center justify-between">
-                <span className="text-gray-600 dark:text-gray-400 transition-colors duration-200">Models Loaded:</span>
-                <span className={`font-medium ${modelsLoaded ? 'text-green-600 dark:text-green-400' : 'text-yellow-600 dark:text-yellow-400'} transition-colors duration-200`}>
-                  {modelsLoaded ? 'Yes' : 'Loading...'}
-                </span>
-              </div>
-              <div className="flex items-center justify-between">
-                <span className="text-gray-600 dark:text-gray-400 transition-colors duration-200">Face Count:</span>
-                <span className={`font-medium ${
-                  faceMetrics.faceCount === 1 ? 'text-green-600 dark:text-green-400' : 
-                  faceMetrics.faceCount > 1 ? 'text-yellow-600 dark:text-yellow-400' : 'text-red-600 dark:text-red-400'
-                } transition-colors duration-200`}>
-                  {faceMetrics.faceCount}
-                </span>
-              </div>
-              <div className="flex items-center justify-between">
-                <span className="text-gray-600 dark:text-gray-400 transition-colors duration-200">Confidence:</span>
-                <span className="font-medium text-blue-600 dark:text-blue-400 transition-colors duration-200">
-                  {(faceMetrics.confidence * 100).toFixed(1)}%
-                </span>
-              </div>
-              <div className="flex items-center justify-between">
-                <span className="text-gray-600 dark:text-gray-400 transition-colors duration-200">Detections:</span>
-                <span className="font-medium text-purple-600 dark:text-purple-400 transition-colors duration-200">
-                  {detectionHistory.length}
-                </span>
-              </div>
-            </div>
-          </div>
-
-          {/* Head Pose Analysis */}
-          <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-700 rounded-lg p-4 transition-colors duration-200">
-            <h4 className="font-medium text-blue-900 dark:text-blue-300 mb-2 transition-colors duration-200">Head Pose Analysis</h4>
-            <div className="space-y-2 text-sm">
-              <div className="flex items-center justify-between">
-                <span className="text-blue-800 dark:text-blue-200 transition-colors duration-200">Yaw (Left/Right):</span>
-                <span className={`font-medium ${Math.abs(faceMetrics.headPose.yaw) > 30 ? 'text-red-600 dark:text-red-400' : 'text-green-600 dark:text-green-400'} transition-colors duration-200`}>
-                  {faceMetrics.headPose.yaw.toFixed(1)}°
-                </span>
-              </div>
-              <div className="flex items-center justify-between">
-                <span className="text-blue-800 dark:text-blue-200 transition-colors duration-200">Pitch (Up/Down):</span>
-                <span className={`font-medium ${Math.abs(faceMetrics.headPose.pitch) > 25 ? 'text-red-600 dark:text-red-400' : 'text-green-600 dark:text-green-400'} transition-colors duration-200`}>
-                  {faceMetrics.headPose.pitch.toFixed(1)}°
-                </span>
-              </div>
-              <div className="flex items-center justify-between">
-                <span className="text-blue-800 dark:text-blue-200 transition-colors duration-200">Roll (Tilt):</span>
-                <span className="font-medium text-blue-600 dark:text-blue-400 transition-colors duration-200">
-                  {faceMetrics.headPose.roll.toFixed(1)}°
-                </span>
-              </div>
-            </div>
-          </div>
-
-          {/* Eye Movement Analysis */}
-          <div className="bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-700 rounded-lg p-4 transition-colors duration-200">
-            <h4 className="font-medium text-green-900 dark:text-green-300 mb-2 transition-colors duration-200">Eye Movement</h4>
-            <div className="space-y-2 text-sm">
-              <div className="flex items-center justify-between">
-                <span className="text-green-800 dark:text-green-200 transition-colors duration-200">Eye Aspect Ratio:</span>
-                <span className="font-medium text-green-600 dark:text-green-400 transition-colors duration-200">
-                  {faceMetrics.eyeAspectRatio.toFixed(3)}
-                </span>
-              </div>
-              <div className="flex items-center justify-between">
-                <span className="text-green-800 dark:text-green-200 transition-colors duration-200">Blink Count:</span>
-                <span className="font-medium text-green-600 dark:text-green-400 transition-colors duration-200">
-                  {blinkHistory.length}
-                </span>
-              </div>
-              <div className="flex items-center justify-between">
-                <span className="text-green-800 dark:text-green-200 transition-colors duration-200">Blink Rate:</span>
-                <span className="font-medium text-green-600 dark:text-green-400 transition-colors duration-200">
-                  {sessionStartTime > 0 ? 
-                    ((blinkHistory.length / ((Date.now() - sessionStartTime) / 1000)) * 60).toFixed(1) : 
-                    '0.0'
-                  } /min
-                </span>
-              </div>
-            </div>
-          </div>
-
-          {/* Violations Log */}
-          {violations.length > 0 && (
-            <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-700 rounded-lg p-4 transition-colors duration-200">
-              <h4 className="font-medium text-red-900 dark:text-red-300 mb-2 transition-colors duration-200">Recent Violations</h4>
-              <div className="space-y-1 max-h-32 overflow-y-auto">
-                {violations.slice(-5).map((violation, index) => (
-                  <div key={index} className={`text-xs p-2 rounded ${
-                    violation.severity === 'high' ? 'bg-red-100 dark:bg-red-900/30 text-red-800 dark:text-red-300' :
-                    violation.severity === 'medium' ? 'bg-yellow-100 dark:bg-yellow-900/30 text-yellow-800 dark:text-yellow-300' :
-                    'bg-blue-100 dark:bg-blue-900/30 text-blue-800 dark:text-blue-300'
-                  } transition-colors duration-200`}>
-                    <div className="font-medium">{violation.type.replace('_', ' ').toUpperCase()}</div>
-                    <div>{violation.time} - {violation.severity} severity</div>
-                  </div>
-                ))}
-              </div>
-            </div>
-          )}
-
-          {/* Session Statistics */}
-          <div className="bg-purple-50 dark:bg-purple-900/20 border border-purple-200 dark:border-purple-700 rounded-lg p-4 transition-colors duration-200">
-            <div className="flex items-center space-x-2 mb-2">
-              <BarChart3 className="h-4 w-4 text-purple-600 dark:text-purple-400" />
-              <h4 className="font-medium text-purple-900 dark:text-purple-300 transition-colors duration-200">Session Stats</h4>
-            </div>
-            <div className="space-y-2 text-sm">
-              <div className="flex items-center justify-between">
-                <span className="text-purple-800 dark:text-purple-200 transition-colors duration-200">Duration:</span>
-                <span className="font-medium text-purple-600 dark:text-purple-400 transition-colors duration-200">
-                  {sessionStartTime > 0 ? 
-                    Math.floor((Date.now() - sessionStartTime) / 1000) : 
-                    0
-                  }s
-                </span>
-              </div>
-              <div className="flex items-center justify-between">
-                <span className="text-purple-800 dark:text-purple-200 transition-colors duration-200">Total Violations:</span>
-                <span className="font-medium text-purple-600 dark:text-purple-400 transition-colors duration-200">
-                  {violations.length}
-                </span>
-              </div>
-            </div>
-          </div>
-
-          {/* Guidelines */}
-          <div className="bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-700 rounded-lg p-4 transition-colors duration-200">
-            <h4 className="font-medium text-green-900 dark:text-green-300 mb-2 transition-colors duration-200">Face-API.js Guidelines</h4>
-            <ul className="text-xs text-green-800 dark:text-green-200 space-y-1 transition-colors duration-200">
-              <li>• Keep your face clearly visible and centered</li>
-              <li>• Look directly at the camera regularly</li>
-              <li>• Avoid excessive head movements</li>
-              <li>• Ensure you are alone in the frame</li>
-              <li>• Maintain good lighting on your face</li>
-              <li>• Blink naturally for best detection</li>
-            </ul>
           </div>
         </div>
       </div>
