@@ -1,6 +1,6 @@
 import React from 'react';
 
-const ResumeChat: React.FC = () => (
+export const ResumeChat: React.FC = () => (
   <div className="min-h-screen flex items-center justify-center bg-gray-50 dark:bg-gray-900">
     <div className="bg-white dark:bg-gray-800 rounded-xl shadow-lg p-10 border border-gray-200 dark:border-gray-700 text-center">
       <h1 className="text-2xl font-bold text-gray-900 dark:text-white mb-4">🚧 This page is under construction</h1>
@@ -8,8 +8,6 @@ const ResumeChat: React.FC = () => (
     </div>
   </div>
 );
-
-export default ResumeChat;
 
 
 
