@@ -98,15 +98,15 @@ export const Header: React.FC = () => {
           {/* Desktop Navigation */}
           <nav className="hidden md:flex items-center space-x-1">
             <Link
-              to="/"
+              to=""
               className={`flex items-center space-x-1 px-3 py-2 rounded-lg text-sm font-medium transition-all duration-200 ${
-                isActive('/') && !user
+                isActive('/https://interview.certifyo.tech/') && !user
                   ? 'bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400'
                   : 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800'
               }`}
             >
               <Home className="h-4 w-4" />
-              <span>Home</span>
+              <span>Learning App</span>
             </Link>
             
             {user && (
