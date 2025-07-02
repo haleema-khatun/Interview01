@@ -100,7 +100,7 @@ export const Header: React.FC = () => {
             <Link
               to=""
               className={`flex items-center space-x-1 px-3 py-2 rounded-lg text-sm font-medium transition-all duration-200 ${
-                isActive('/https://interview.certifyo.tech/') && !user
+                isActive('/https://certifyo.pages.dev/') && !user
                   ? 'bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400'
                   : 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800'
               }`}
