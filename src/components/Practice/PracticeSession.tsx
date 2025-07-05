@@ -848,7 +848,7 @@ export const PracticeSession: React.FC = () => {
             <div className="flex items-center space-x-2">
               <Zap className="h-4 w-4 text-green-600 dark:text-green-400" />
               <p className="text-sm text-green-800 dark:text-green-200 transition-colors duration-200">
-                <span className="font-medium">⚡ Enhanced Practice Mode:</span> {evaluationType === 'detailed' ? 'Comprehensive' : 'Standard'} evaluation with {selectedProvider !== 'auto' ? selectedProvider : 'auto-selected'} AI and {proctorMode === 'enabled' ? 'camera monitoring' : 'practice mode'}
+                <span className="font-medium">⚡ Ready for AI Evaluation:</span> {evaluationType === 'detailed' ? 'Comprehensive' : 'Standard'} evaluation with {selectedProvider !== 'auto' ? selectedProvider : 'auto-selected'} AI and {proctorMode === 'enabled' ? 'camera monitoring' : 'practice mode'}
               </p>
             </div>
           </div>
@@ -868,31 +868,13 @@ export const PracticeSession: React.FC = () => {
           </div>
         )}
 
-        {/* Submit Buttons */}
+        {/* Submit Button */}
         {canStartPractice && (
-          <div className="flex justify-end space-x-4">
+          <div className="flex justify-end">
             <button
-              onClick={() => !isSubmissionLocked && submitAnswer('simple')}
+              onClick={() => !isSubmissionLocked && submitAnswer(evaluationType)}
               disabled={submitting || !answer.trim() || isSubmissionLocked}
-              className="flex items-center space-x-2 bg-blue-600 dark:bg-blue-500 text-white px-6 py-3 rounded-lg font-medium hover:bg-blue-700 dark:hover:bg-blue-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-            >
-              {submitting ? (
-                <>
-                  <Loader className="h-4 w-4 animate-spin" />
-                  <span>Processing...</span>
-                </>
-              ) : (
-                <>
-                  <Zap className="h-4 w-4" />
-                  <span>Simple Evaluation</span>
-                </>
-              )}
-            </button>
-            
-            <button
-              onClick={() => !isSubmissionLocked && submitAnswer('detailed')}
-              disabled={submitting || !answer.trim() || isSubmissionLocked}
-              className="flex items-center space-x-2 bg-purple-600 dark:bg-purple-500 text-white px-6 py-3 rounded-lg font-medium hover:bg-purple-700 dark:hover:bg-purple-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              className="flex items-center space-x-2 bg-gradient-to-r from-blue-600 to-purple-600 dark:from-blue-500 dark:to-purple-500 text-white px-8 py-3 rounded-lg font-medium hover:from-blue-700 hover:to-purple-700 dark:hover:from-blue-600 dark:hover:to-purple-600 transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed shadow-lg hover:shadow-xl transform hover:scale-105"
             >
               {submitting ? (
                 <>
@@ -902,7 +884,7 @@ export const PracticeSession: React.FC = () => {
               ) : (
                 <>
                   <Brain className="h-4 w-4" />
-                  <span>Detailed Evaluation</span>
+                  <span>Submit for AI Evaluation</span>
                 </>
               )}
             </button>

@@ -4,14 +4,12 @@ import { ArrowLeft, Brain, Settings } from 'lucide-react';
 
 interface EvaluationHeaderProps {
   evaluation: any;
-  quickEval: any;
   question: any;
   hasAnyApiKey: boolean;
 }
 
 export const EvaluationHeader: React.FC<EvaluationHeaderProps> = ({
   evaluation,
-  quickEval,
   question,
   hasAnyApiKey,
 }) => {
@@ -34,7 +32,7 @@ export const EvaluationHeader: React.FC<EvaluationHeaderProps> = ({
           </div>
           <div>
             <h1 className="text-3xl font-bold text-gray-900 dark:text-white transition-colors duration-200">
-              {evaluation ? 'Detailed Evaluation Results' : quickEval ? 'Quick Evaluation Results' : 'Evaluation Results'}
+              {evaluation ? 'AI Evaluation Results' : 'Evaluation Results'}
             </h1>
             <p className="text-gray-600 dark:text-gray-400 transition-colors duration-200">
               {question?.title || 'Interview Question'}

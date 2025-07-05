@@ -962,7 +962,7 @@ SCORING RULES:
   "feedback_text": "Comprehensive feedback focusing on relevance first (max 200 words)",
   "strengths": ["strength 1", "strength 2", "strength 3"],
   "improvements": ["improvement 1", "improvement 2", "improvement 3"],
-  "suggested_answer": "Concise model answer (max 150 words)",
+  "suggested_answer": "Provide a complete, professional model answer that directly addresses the question. Include specific examples, technical details, and demonstrate best practices. Write as if you are a senior professional giving an excellent interview response. DO NOT give advice about what a good answer should include - actually provide the answer itself.",
   "key_points_missed": ["point 1", "point 2", "point 3"],
   "interview_tips": ["tip 1", "tip 2", "tip 3"],
   "detailed_breakdown": {
@@ -1127,7 +1127,7 @@ REMEMBER: If the answer is completely irrelevant to the question, ALL scores sho
       feedback_text: feedback,
       strengths,
       improvements,
-      suggested_answer: `An excellent answer would start with a brief, confident introduction that directly addresses the question. For example: "I'd be happy to walk you through my approach to [specific topic]. In my experience, the key factors are [list 2-3 main points]." Then, provide a specific example using the STAR method (Situation, Task, Action, Result), including quantifiable outcomes. Finally, conclude by connecting your experience to the role you're applying for and demonstrating how you'd apply these skills in their organization.`,
+      suggested_answer: `I would approach this by first understanding the specific requirements and constraints. In my experience at TechCorp, I led a similar initiative where we needed to balance technical excellence with business priorities. I started by gathering input from all stakeholders to ensure alignment on goals and success metrics. Then I developed a phased implementation plan that allowed for iterative improvements while maintaining system stability. We used data-driven decision making throughout the process, regularly measuring progress against our defined KPIs. The result was a 40% improvement in efficiency while maintaining 99.9% uptime. This approach demonstrates my ability to deliver complex solutions while managing risk and ensuring stakeholder satisfaction.`,
       key_points_missed: overall_score <= 3 ? [
         'The main topic of the question was not addressed',
         'No relevant examples or experiences were provided',

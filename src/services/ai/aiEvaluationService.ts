@@ -1,7 +1,6 @@
 import { TokenEstimator } from '../tokenEstimator';
 import { AIProviderManager } from './aiProviderManager';
 import { AIResponseParser } from './aiResponseParser';
-import { MockEvaluationGenerator } from './mockEvaluationGenerator';
 import { EvaluationRequest, EvaluationResponse } from './types';
 
 export class AIEvaluationService {
@@ -101,8 +100,8 @@ export class AIEvaluationService {
     console.log('✅ Available providers in priority order:', availableProviders.map(p => p.name));
     
     if (availableProviders.length === 0) {
-      console.log('ℹ️ No API keys or all providers failed, using enhanced mock evaluation');
-      return await MockEvaluationGenerator.generateEvaluation(request);
+      console.log('❌ No AI providers available');
+      throw new Error('No AI providers available. Please add API keys from Groq, OpenAI, or Gemini in Settings.');
     }
     
     // Try each available provider in order
@@ -131,9 +130,8 @@ export class AIEvaluationService {
         
         // If this is the last provider, throw the error
         if (i === availableProviders.length - 1) {
-          // If all providers failed, fall back to mock
-          console.log('❌ All providers failed, falling back to mock evaluation');
-          return await MockEvaluationGenerator.generateEvaluation(request);
+          console.log('❌ All providers failed');
+          throw new Error(`All AI providers failed. Last error: ${error.message}`);
         }
         
         // Continue to next provider
@@ -141,9 +139,8 @@ export class AIEvaluationService {
       }
     }
     
-    // Fallback to mock if we somehow get here
-    console.log('ℹ️ Fallback to mock evaluation');
-    return await MockEvaluationGenerator.generateEvaluation(request);
+    // This should never be reached, but just in case
+    throw new Error('Unexpected error: No AI providers available');
   }
 
   // Get status of all providers
@@ -159,7 +156,4 @@ export class AIEvaluationService {
   static resetFailedProviders(): void {
     AIProviderManager.resetFailedProviders();
   }
-
-  // For backward compatibility
-  static mockEvaluation = MockEvaluationGenerator.generateEvaluation;
 }

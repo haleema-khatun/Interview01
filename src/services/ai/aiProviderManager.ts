@@ -433,34 +433,34 @@ SCORING RULES:
   "relevance_score": integer (1-10), 
   "critical_thinking_score": integer (1-10),
   "thoroughness_score": integer (1-10),
-  "feedback_text": "Comprehensive feedback focusing on relevance first (max 200 words)",
-  "strengths": ["strength 1", "strength 2", "strength 3"],
-  "improvements": ["improvement 1", "improvement 2", "improvement 3"],
-  "suggested_answer": "Concise model answer (max 150 words)",
-  "key_points_missed": ["point 1", "point 2", "point 3"],
-  "interview_tips": ["tip 1", "tip 2", "tip 3"],
-  "detailed_breakdown": {
-    "clarity": {
-      "score": integer (1-10),
-      "feedback": "Brief feedback (max 50 words)",
-      "examples": ["example 1", "example 2"]
-    },
-    "relevance": {
-      "score": integer (1-10),
-      "feedback": "Brief feedback (max 50 words)",
-      "examples": ["example 1", "example 2"]
-    },
-    "critical_thinking": {
-      "score": integer (1-10),
-      "feedback": "Brief feedback (max 50 words)",
-      "examples": ["example 1", "example 2"]
-    },
-    "thoroughness": {
-      "score": integer (1-10),
-      "feedback": "Brief feedback (max 50 words)",
-      "examples": ["example 1", "example 2"]
+  "feedback_text": "Comprehensive feedback focusing on relevance first (minimum 300 words, be detailed and specific)",
+  "strengths": ["strength 1", "strength 2", "strength 3", "strength 4", "strength 5"],
+  "improvements": ["improvement 1", "improvement 2", "improvement 3", "improvement 4", "improvement 5"],
+  "suggested_answer": "Provide a complete, professional model answer that directly addresses the question. Include specific examples, technical details, and demonstrate best practices. Write as if you are a senior professional giving an excellent interview response (minimum 300 words). DO NOT give advice about what a good answer should include - actually provide the answer itself.",
+  "key_points_missed": ["point 1", "point 2", "point 3", "point 4", "point 5"],
+  "interview_tips": ["tip 1", "tip 2", "tip 3", "tip 4", "tip 5"],
+      "detailed_breakdown": {
+      "clarity": {
+        "score": integer (1-10),
+        "feedback": "Detailed feedback with specific observations and actionable advice (minimum 100 words)",
+        "examples": ["example 1", "example 2", "example 3", "example 4"]
+      },
+      "relevance": {
+        "score": integer (1-10),
+        "feedback": "Detailed feedback with specific observations and actionable advice (minimum 100 words)",
+        "examples": ["example 1", "example 2", "example 3", "example 4"]
+      },
+      "critical_thinking": {
+        "score": integer (1-10),
+        "feedback": "Detailed feedback with specific observations and actionable advice (minimum 100 words)",
+        "examples": ["example 1", "example 2", "example 3", "example 4"]
+      },
+      "thoroughness": {
+        "score": integer (1-10),
+        "feedback": "Detailed feedback with specific observations and actionable advice (minimum 100 words)",
+        "examples": ["example 1", "example 2", "example 3", "example 4"]
+      }
     }
-  }
 }
 
 EVALUATION CRITERIA:

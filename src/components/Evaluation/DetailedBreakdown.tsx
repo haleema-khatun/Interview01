@@ -97,14 +97,14 @@ export const DetailedBreakdown: React.FC<DetailedBreakdownProps> = ({
                   <h5 className="text-xs font-medium text-gray-700 dark:text-gray-300 mb-2 uppercase tracking-wider">How to Improve</h5>
                   <p className="text-xs text-gray-600 dark:text-gray-400">
                     {key === 'clarity' ? 
-                      'Focus on clear structure, concise language, and logical flow. Use transitions between points and avoid jargon unless necessary.' :
+                      'Focus on clear structure, concise language, and logical flow. Use transitions between points and avoid jargon unless necessary. Practice speaking slowly and deliberately, and consider using frameworks like STAR to organize your thoughts before responding.' :
                     key === 'relevance' ? 
-                      'Ensure every part of your answer directly addresses the question. Start by restating the question and structure your response around its key elements.' :
+                      'Ensure every part of your answer directly addresses the question. Start by restating the question and structure your response around its key elements. Practice "question mapping" to identify the core elements before responding, and use the "so what" test to maintain focus.' :
                     key === 'critical_thinking' ? 
-                      'Demonstrate analytical depth by explaining your reasoning, considering multiple perspectives, and discussing implications of your approach.' :
+                      'Demonstrate analytical depth by explaining your reasoning, considering multiple perspectives, and discussing implications of your approach. Show your thought process, explore alternatives, and discuss the broader impact of your decisions to demonstrate strategic thinking.' :
                     key === 'thoroughness' ? 
-                      'Cover all aspects of the question comprehensively. Include specific examples, address potential concerns, and provide complete context.' :
-                    'Focus on improving this aspect of your response with more practice and attention to detail.'}
+                      'Cover all aspects of the question comprehensively. Include specific examples, address potential concerns, and provide complete context. Use frameworks like STAR to ensure you cover all necessary elements, and expand on your examples with measurable outcomes and specific details.' :
+                    'Focus on improving this aspect of your response with more practice and attention to detail. Consider recording yourself and reviewing your responses to identify specific areas for improvement.'}
                   </p>
                 </div>
               </div>
