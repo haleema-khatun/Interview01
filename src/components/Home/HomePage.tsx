@@ -438,22 +438,22 @@ export const HomePage: React.FC = () => {
             <div>
               <h3 className="font-semibold mb-4">Features</h3>
               <ul className="space-y-2 text-gray-400 dark:text-gray-500 transition-colors duration-200">
-                <li>AI Evaluation</li>
-                <li>Face Monitoring</li>
-                <li>Custom Questions</li>
-                <li>Study Plans</li>
-                <li>Progress Tracking</li>
+                <li><a href="#" className="footer-link">AI Evaluation</a></li>
+                <li><a href="#" className="footer-link">Face Monitoring</a></li>
+                <li><a href="#" className="footer-link">Custom Questions</a></li>
+                <li><a href="#" className="footer-link">Study Plans</a></li>
+                <li><a href="#" className="footer-link">Progress Tracking</a></li>
               </ul>
             </div>
             
             <div>
               <h3 className="font-semibold mb-4">Company</h3>
               <ul className="space-y-2 text-gray-400 dark:text-gray-500 transition-colors duration-200">
-                <li>About Us</li>
-                <li>Privacy Policy</li>
-                <li>Terms of Service</li>
-                <li>Contact</li>
-                <li>Support</li>
+                <li><a href="#" className="footer-link">About Us</a></li>
+                <li><a href="#" className="footer-link">Privacy Policy</a></li>
+                <li><a href="#" className="footer-link">Terms of Service</a></li>
+                <li><a href="#" className="footer-link">Contact</a></li>
+                <li><a href="#" className="footer-link">Support</a></li>
               </ul>
             </div>
           </div>
