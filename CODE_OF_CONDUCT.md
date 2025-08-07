@@ -88,6 +88,6 @@ This Code of Conduct is adapted from the [Contributor Covenant (v3.0)](https://w
 
 ***Closing Statement***
 
-***By participating in Interview01, you agree to uphold the principles and expectations outlined in this Code of Conduct. ***
+***By participating in Interview01, you agree to uphold the principles and expectations outlined in this Code of Conduct.***
 
 **Together, let us contribute to a culture of openness, learning, and mutual respect that reflects the spirit of GSSoC’25 and the broader open-source community.**
