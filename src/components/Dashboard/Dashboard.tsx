@@ -191,14 +191,14 @@ export const Dashboard: React.FC = () => {
   };
 
   return (
-    <div className="min-h-screen bg-gray-50 dark:bg-gray-900 transition-colors duration-200">
+    <div className="min-h-screen bg-[#AFDDE5] dark:bg-[#003135] transition-colors duration-200">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         {/* Header */}
         <div className="mb-8">
-          <h1 className="text-3xl font-bold text-gray-900 dark:text-white mb-2 transition-colors duration-200">
+          <h1 className="text-3xl font-bold text-[#003135] dark:text-[#AFDDE5] mb-2 transition-colors duration-200">
             Interview Practice Dashboard
           </h1>
-          <p className="text-gray-600 dark:text-gray-400 transition-colors duration-200">
+          <p className="text-[#024950] dark:text-[#AFDDE5]/80 transition-colors duration-200">
             Choose from {questionCount} carefully curated questions from top companies to improve your interview skills
           </p>
         </div>
@@ -208,14 +208,14 @@ export const Dashboard: React.FC = () => {
           {stats.map((stat) => {
             const Icon = stat.icon;
             return (
-              <div key={stat.name} className="bg-white dark:bg-gray-800 rounded-xl shadow-sm p-6 border border-gray-200 dark:border-gray-700 hover:shadow-md transition-all duration-200 group">
+              <div key={stat.name} className="bg-white dark:bg-[#024950] rounded-xl shadow-sm p-6 border border-[#0FA4AF]/30 dark:border-[#024950] hover:shadow-md hover:border-[#0FA4AF] transition-all duration-200 group">
                 <div className="flex items-center">
-                  <div className={`p-3 rounded-lg ${stat.color} transition-colors duration-200 group-hover:scale-110 transform transition-transform duration-300`}>
-                    <Icon className="h-6 w-6" />
+                  <div className="p-3 rounded-lg bg-[#0FA4AF]/20 dark:bg-[#003135] transition-colors duration-200 group-hover:scale-110 transform transition-transform duration-300">
+                    <Icon className="h-6 w-6 text-[#0FA4AF]" />
                   </div>
                   <div className="ml-4">
-                    <p className="text-sm font-medium text-gray-600 dark:text-gray-400 transition-colors duration-200">{stat.name}</p>
-                    <p className="text-2xl font-bold text-gray-900 dark:text-white transition-colors duration-200">{stat.value}</p>
+                    <p className="text-sm font-medium text-[#024950] dark:text-[#AFDDE5]/80 transition-colors duration-200">{stat.name}</p>
+                    <p className="text-2xl font-bold text-[#003135] dark:text-[#AFDDE5] transition-colors duration-200">{stat.value}</p>
                   </div>
                 </div>
               </div>
@@ -224,7 +224,7 @@ export const Dashboard: React.FC = () => {
         </div>
 
         {/* Filters */}
-        <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm p-6 mb-8 border border-gray-200 dark:border-gray-700 transition-colors duration-200">
+        <div className="bg-white dark:bg-[#024950] rounded-xl shadow-sm p-6 mb-8 border border-[#0FA4AF]/30 dark:border-[#024950] transition-colors duration-200">
           <div className="flex items-center space-x-4 mb-4">
             <Filter className="h-5 w-5 text-gray-400 dark:text-gray-500" />
             <h3 className="text-lg font-semibold text-gray-900 dark:text-white transition-colors duration-200">Filter Questions</h3>

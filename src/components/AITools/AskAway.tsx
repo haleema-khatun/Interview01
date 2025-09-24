@@ -118,8 +118,8 @@ export const AskAway: React.FC = () => {
     setMessages(prev => [...prev, userMessage]);
 
     try {
-      // Check if we have API keys for real AI evaluation
-      const hasAnyKey = availableKeys.groq || availableKeys.openai || availableKeys.gemini;
+      // Check if we have Gemini API key for real AI evaluation
+      const hasAnyKey = availableKeys.gemini;
 
       let feedback = '';
       let score = 0;
@@ -151,8 +151,7 @@ Format your response as a detailed evaluation with clear sections.`;
           
           feedback = `**Score: ${score}/10**\n\n${aiResponse}\n\n💡 **Next Steps:** You can ask for another question, request clarification, or practice a specific type of question!`;
           
-          const aiProvider = availableKeys.groq ? 'Groq' : availableKeys.openai ? 'OpenAI' : 'Gemini';
-          toast.success(`✅ Answer evaluated using ${aiProvider} AI!`);
+          toast.success('✅ Answer evaluated using Gemini AI!');
         } catch (aiError) {
           console.warn('⚠️ AI evaluation failed, using enhanced feedback:', aiError);
           const enhancedFeedback = generateEnhancedFeedback(userAnswer, currentQuestion);
@@ -359,7 +358,7 @@ ${improvements.map(i => `• ${i}`).join('\n')}
   const hasAnyApiKey = availableKeys.groq || availableKeys.openai || availableKeys.gemini;
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-purple-50 via-white to-blue-50 dark:from-gray-900 dark:via-gray-800 dark:to-gray-900 transition-colors duration-200">
+    <div className="min-h-screen bg-[#AFDDE5] dark:bg-[#003135] transition-colors duration-200">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         {/* Enhanced Header */}
         <div className="mb-8">

@@ -18,11 +18,6 @@ A comprehensive interview preparation platform that combines advanced AI evaluat
 - **Personalized Feedback**: Receive specific suggestions for improvement based on your responses
 - **Real-time Analysis**: Instant evaluation with detailed breakdowns
 
-### 📹 Advanced Face Monitoring
-- **Face-API.js Integration**: Professional-grade face detection and behavioral analysis
-- **Eye Contact Tracking**: Monitor and improve your eye contact during interviews
-- **Posture Analysis**: Get feedback on your body language and professional appearance
-- **Real-time Alerts**: Receive notifications for behavioral improvements
 
 ### 🎯 Custom Question Generator
 - **Job Description Analysis**: Generate questions from specific job postings

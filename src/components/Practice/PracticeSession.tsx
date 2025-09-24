@@ -4,11 +4,8 @@ import { useAuth } from '../../contexts/AuthContext';
 import { getQuestionById, type Question } from '../../data/questions';
 import { EvaluationHistoryService } from '../../services/evaluationHistoryService';
 import { TokenEstimator } from '../../services/tokenEstimator';
-import { AIProviderSelector } from './AIProviderSelector';
 import { RatingModeSelector } from './RatingModeSelector';
 import { AnswerInput } from './AnswerInput';
-import { SimpleCameraMonitor } from './SimpleCameraMonitor';
-import { AdvancedCameraProctor } from './AdvancedCameraProctor';
 import {
   ArrowLeft,
   Code,
@@ -17,9 +14,6 @@ import {
   AlertCircle,
   Zap,
   Loader,
-  Camera,
-  CameraOff,
-  Shield,
   Brain,
   AlertTriangle,
 } from 'lucide-react';
@@ -80,36 +74,6 @@ interface SpeechRecognition extends EventTarget {
   onnomatch: (() => void) | null;
 }
 
-export interface PresenceMonitoringReport {
-  sessionDuration: number;
-  totalDetections: number;
-  averageConfidence: number;
-  faceDetectionRate: number;
-  violations: {
-    faceNotDetected: number;
-    multipleFaces: number;
-    lookingAway: number;
-    faceObscured: number;
-    suspiciousMovement: number;
-  };
-  headPoseStats: {
-    averageYaw: number;
-    averagePitch: number;
-    averageRoll: number;
-    maxYawDeviation: number;
-    maxPitchDeviation: number;
-  };
-  eyeMovementStats: {
-    averageEAR: number;
-    blinkCount: number;
-    blinkRate: number;
-  };
-  attentionScore: number;
-  stabilityScore: number;
-  overallScore: number;
-  presenceRate:number,
-  recommendations: string[];
-}
 
 export const PracticeSession: React.FC = () => {
   const { questionId } = useParams();
@@ -124,20 +88,8 @@ export const PracticeSession: React.FC = () => {
   const [recognition, setRecognition] = useState<SpeechRecognition | null>(null);
   const [debugInfo, setDebugInfo] = useState<string[]>([]);
   const [ratingMode, setRatingMode] = useState<'tough' | 'lenient'>('lenient');
-  const [selectedProvider, setSelectedProvider] = useState<'auto' | 'groq' | 'openai' | 'gemini'>('auto');
-  const [availableKeys, setAvailableKeys] = useState<{groq: boolean, openai: boolean, gemini: boolean}>({
-    groq: false,
-    openai: false,
-    gemini: false
-  });
-  const [tokenLimits, setTokenLimits] = useState(TokenEstimator.getProviderLimits());
   
-  // Camera monitoring states
-  const [proctorMode, setProctorMode] = useState<'enabled' | 'disabled'>('enabled');
-  const [cameraReady, setCameraReady] = useState(false);
-  const [violations, setViolations] = useState<Array<{type: string, time: string, severity: 'low' | 'medium' | 'high'}>>([]);
-  const [canStartPractice, setCanStartPractice] = useState(false);
-  const [presenceReport, setPresenceReport] = useState<PresenceMonitoringReport | null>(null);
+  const [canStartPractice] = useState(true);
   
   // Evaluation type
   const [evaluationType, setEvaluationType] = useState<'simple' | 'detailed'>('simple');
@@ -184,22 +136,11 @@ export const PracticeSession: React.FC = () => {
     };
   }, [questionId]);
 
-  useEffect(() => {
-    // Check if user can start practice based on proctoring mode
-    if (proctorMode === 'disabled') {
-      setCanStartPractice(true);
-    } else {
-      setCanStartPractice(cameraReady);
-    }
-  }, [proctorMode, cameraReady]);
 
   const checkApiKeys = () => {
-    const keys = {
-      groq: !!localStorage.getItem('groq_api_key'),
-      openai: !!localStorage.getItem('openai_api_key'),
-      gemini: !!localStorage.getItem('gemini_api_key'),
-    };
-    setAvailableKeys(keys);
+    // Check if Gemini API key is available
+    const hasGeminiKey = !!localStorage.getItem('gemini_api_key');
+    console.log('🔑 Gemini API key available:', hasGeminiKey);
   };
 
   const fetchQuestion = async () => {
@@ -408,32 +349,6 @@ export const PracticeSession: React.FC = () => {
     }
   };
 
-  const handleCameraReady = (isReady: boolean) => {
-    setCameraReady(isReady);
-    if (isReady) {
-      addDebugLog('Camera monitoring is ready', 'success');
-    } else {
-      addDebugLog('Camera monitoring failed to initialize', 'error');
-    }
-  };
-
-  const handleViolation = (type: string) => {
-    const violation = {
-      type,
-      time: new Date().toLocaleTimeString(),
-      severity: type === 'multiple_faces' ? 'high' as const : 
-                type === 'face_not_detected' ? 'high' as const :
-                type === 'electronic_device' ? 'medium' as const :
-                'medium' as const
-    };
-    setViolations(prev => [...prev, violation]);
-    addDebugLog(`Camera monitoring violation: ${type} (${violation.severity} severity)`, 'error');
-  };
-
-  const handleReport = (report: PresenceMonitoringReport) => {
-    setPresenceReport(report);
-    addDebugLog(`Monitoring report generated.`, 'success');
-  };
 
   const submitAnswer = async (evalType: 'simple' | 'detailed' = evaluationType) => {
     // Validation
@@ -447,10 +362,6 @@ export const PracticeSession: React.FC = () => {
       return;
     }
 
-    if (!canStartPractice) {
-      addDebugLog('Camera monitoring must be enabled to submit', 'error');
-      return;
-    }
 
     // Prevent double submissions
     if (submitting || isSubmissionLocked) {
@@ -458,20 +369,18 @@ export const PracticeSession: React.FC = () => {
       return;
     }
 
-    // Check token limits if using specific provider
-    if (selectedProvider !== 'auto') {
-      const tokenCheck = TokenEstimator.canEvaluate(question.description, answer, selectedProvider);
-      if (!tokenCheck.canEvaluate) {
-        addDebugLog(tokenCheck.message, 'error');
-        return;
-      }
-      addDebugLog(tokenCheck.message);
+    // Check token limits for Gemini
+    const tokenCheck = TokenEstimator.canEvaluate(question.description, answer, 'gemini');
+    if (!tokenCheck.canEvaluate) {
+      addDebugLog(tokenCheck.message, 'error');
+      return;
     }
+    addDebugLog(tokenCheck.message);
 
     // Start submission process
     setSubmitting(true);
     setIsSubmissionLocked(true); // Lock to prevent double submissions
-    addDebugLog(`🚀 Starting submission with ${ratingMode} rating mode, ${selectedProvider} provider, and ${evalType} evaluation...`);
+    addDebugLog(`🚀 Starting submission with ${ratingMode} rating mode, Gemini provider, and ${evalType} evaluation...`);
 
     try {
       // Stop recording if active
@@ -485,13 +394,9 @@ export const PracticeSession: React.FC = () => {
       addDebugLog(`Response time: ${responseTimeSeconds} seconds`);
 
       // Force the selected provider if not auto
-      if (selectedProvider !== 'auto') {
-        AIEvaluationService.forceProvider(selectedProvider);
-        addDebugLog(`Forcing provider: ${selectedProvider}`);
-      } else {
-        AIEvaluationService.forceProvider(null);
-        addDebugLog('Using auto provider selection');
-      }
+      // Force Gemini provider
+      AIEvaluationService.forceProvider('gemini');
+      addDebugLog('Using Gemini provider');
 
       // Create response object (stored locally)
       const responseData = {
@@ -502,12 +407,12 @@ export const PracticeSession: React.FC = () => {
         image_urls: [], // No images in face monitoring mode
         response_time_seconds: responseTimeSeconds,
         rating_mode: ratingMode,
-        selected_provider: selectedProvider,
+        selected_provider: 'gemini',
         evaluation_type: evalType,
-        proctoring_enabled: proctorMode === 'enabled',
-        proctoring_type: 'simple_camera',
-        violations: violations,
-        presence_report: presenceReport,
+        proctoring_enabled: false,
+        proctoring_type: 'none',
+        violations: [],
+        presence_report: null,
         created_at: new Date().toISOString(),
       };
 
@@ -516,14 +421,8 @@ export const PracticeSession: React.FC = () => {
       addDebugLog(`Question ID: ${question.id}`);
       addDebugLog(`Answer length: ${answer.trim().length} characters`);
       addDebugLog(`Rating mode: ${ratingMode}`);
-      addDebugLog(`Provider: ${selectedProvider}`);
+      addDebugLog('Provider: Gemini');
       addDebugLog(`Evaluation type: ${evalType}`);
-      addDebugLog(`Camera Monitoring: ${proctorMode}`);
-      addDebugLog(`Violations: ${violations.length}`);
-      
-      if (presenceReport) {
-        addDebugLog(`Presence Report: ${presenceReport.presenceRate}% presence rate`);
-      }
 
       // Store locally and navigate to evaluation
       addDebugLog('Storing response locally...');
@@ -704,71 +603,12 @@ export const PracticeSession: React.FC = () => {
         </div>
 
         {/* Configuration Options - Compact Layout */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
-          {/* Camera Monitoring Mode */}
-          <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm p-4 border border-gray-200 dark:border-gray-700 transition-colors duration-200">
-            <div className="flex items-center space-x-3 mb-3">
-              <Camera className="h-5 w-5 text-blue-600 dark:text-blue-400" />
-              <h2 className="text-base font-semibold text-gray-900 dark:text-white transition-colors duration-200">Camera Monitoring</h2>
-            </div>
-            
-            <div className="flex space-x-3">
-              <button
-                onClick={() => setProctorMode('enabled')}
-                className={`flex-1 p-3 rounded-lg border transition-all ${
-                  proctorMode === 'enabled'
-                    ? 'border-blue-500 dark:border-blue-400 bg-blue-50 dark:bg-blue-900/20 text-blue-900 dark:text-blue-300'
-                    : 'border-gray-200 dark:border-gray-700 hover:border-blue-300 dark:hover:border-blue-600 text-gray-700 dark:text-gray-300'
-                } transition-colors duration-200`}
-              >
-                <div className="flex items-center space-x-2">
-                  <div className={`p-1.5 rounded-lg ${proctorMode === 'enabled' ? 'bg-blue-500 dark:bg-blue-400' : 'bg-gray-200 dark:bg-gray-700'} transition-colors duration-200`}>
-                    <Camera className="h-4 w-4 text-white dark:text-gray-900" />
-                  </div>
-                  <div className="text-left">
-                    <h3 className="text-sm font-medium">Enabled</h3>
-                    <p className="text-xs opacity-75">Presence tracking</p>
-                  </div>
-                </div>
-              </button>
-
-              <button
-                onClick={() => setProctorMode('disabled')}
-                className={`flex-1 p-3 rounded-lg border transition-all ${
-                  proctorMode === 'disabled'
-                    ? 'border-gray-500 dark:border-gray-400 bg-gray-50 dark:bg-gray-700/50 text-gray-900 dark:text-gray-300'
-                    : 'border-gray-200 dark:border-gray-700 hover:border-gray-300 dark:hover:border-gray-600 text-gray-700 dark:text-gray-300'
-                } transition-colors duration-200`}
-              >
-                <div className="flex items-center space-x-2">
-                  <div className={`p-1.5 rounded-lg ${proctorMode === 'disabled' ? 'bg-gray-500 dark:bg-gray-400' : 'bg-gray-200 dark:bg-gray-700'} transition-colors duration-200`}>
-                    <CameraOff className="h-4 w-4 text-white dark:text-gray-900" />
-                  </div>
-                  <div className="text-left">
-                    <h3 className="text-sm font-medium">Disabled</h3>
-                    <p className="text-xs opacity-75">Practice mode</p>
-                  </div>
-                </div>
-              </button>
-            </div>
-
-            {proctorMode === 'enabled' && !canStartPractice && (
-              <div className="mt-3 p-2 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-700 rounded-lg text-xs transition-colors duration-200">
-                <div className="flex items-start space-x-1.5">
-                  <Camera className="h-3.5 w-3.5 text-blue-600 dark:text-blue-400 mt-0.5 flex-shrink-0" />
-                  <p className="text-blue-800 dark:text-blue-200 transition-colors duration-200">
-                    Please enable camera access below to start with monitoring.
-                  </p>
-                </div>
-              </div>
-            )}
-          </div>
-
+        <div className="grid grid-cols-1 gap-4 mb-6">
           {/* Evaluation Type Selection - Simplified */}
-          <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm p-4 border border-gray-200 dark:border-gray-700 transition-colors duration-200">
+          <div className="bg-white dark:bg-[#003135] rounded-xl shadow-sm p-4 border border-[#AFDDE5] dark:border-[#024950] transition-colors duration-200">
             <div className="flex items-center space-x-3 mb-3">
-              <Brain className="h-5 w-5 text-blue-600 dark:text-blue-400" />
-              <h2 className="text-base font-semibold text-gray-900 dark:text-white transition-colors duration-200">Evaluation Type</h2>
+              <Brain className="h-5 w-5 text-[#0FA4AF]" />
+              <h2 className="text-base font-semibold text-[#003135] dark:text-[#AFDDE5] transition-colors duration-200">Evaluation Type</h2>
             </div>
             
             <div className="flex space-x-3">
@@ -776,13 +616,13 @@ export const PracticeSession: React.FC = () => {
                 onClick={() => setEvaluationType('simple')}
                 className={`flex-1 p-3 rounded-lg border transition-all ${
                   evaluationType === 'simple'
-                    ? 'border-blue-500 dark:border-blue-400 bg-blue-50 dark:bg-blue-900/20 text-blue-900 dark:text-blue-300'
-                    : 'border-gray-200 dark:border-gray-700 hover:border-blue-300 dark:hover:border-blue-600 text-gray-700 dark:text-gray-300'
+                    ? 'border-[#0FA4AF] bg-[#AFDDE5]/20 dark:bg-[#024950] text-[#003135] dark:text-[#AFDDE5]'
+                    : 'border-[#AFDDE5] dark:border-[#024950] hover:border-[#0FA4AF] text-[#003135] dark:text-[#AFDDE5]'
                 } transition-colors duration-200`}
               >
                 <div className="flex items-center space-x-2">
-                  <div className={`p-1.5 rounded-lg ${evaluationType === 'simple' ? 'bg-blue-500 dark:bg-blue-400' : 'bg-gray-200 dark:bg-gray-700'} transition-colors duration-200`}>
-                    <Zap className="h-4 w-4 text-white dark:text-gray-900" />
+                  <div className={`p-1.5 rounded-lg ${evaluationType === 'simple' ? 'bg-[#0FA4AF]' : 'bg-[#AFDDE5] dark:bg-[#024950]'} transition-colors duration-200`}>
+                    <Zap className="h-4 w-4 text-white" />
                   </div>
                   <div className="text-left">
                     <h3 className="text-sm font-medium">Simple</h3>
@@ -795,13 +635,13 @@ export const PracticeSession: React.FC = () => {
                 onClick={() => setEvaluationType('detailed')}
                 className={`flex-1 p-3 rounded-lg border transition-all ${
                   evaluationType === 'detailed'
-                    ? 'border-purple-500 dark:border-purple-400 bg-purple-50 dark:bg-purple-900/20 text-purple-900 dark:text-purple-300'
-                    : 'border-gray-200 dark:border-gray-700 hover:border-purple-300 dark:hover:border-purple-600 text-gray-700 dark:text-gray-300'
+                    ? 'border-[#964734] bg-[#964734]/10 dark:bg-[#024950] text-[#964734] dark:text-[#AFDDE5]'
+                    : 'border-[#AFDDE5] dark:border-[#024950] hover:border-[#964734] text-[#003135] dark:text-[#AFDDE5]'
                 } transition-colors duration-200`}
               >
                 <div className="flex items-center space-x-2">
-                  <div className={`p-1.5 rounded-lg ${evaluationType === 'detailed' ? 'bg-purple-500 dark:bg-purple-400' : 'bg-gray-200 dark:bg-gray-700'} transition-colors duration-200`}>
-                    <Brain className="h-4 w-4 text-white dark:text-gray-900" />
+                  <div className={`p-1.5 rounded-lg ${evaluationType === 'detailed' ? 'bg-[#964734]' : 'bg-[#AFDDE5] dark:bg-[#024950]'} transition-colors duration-200`}>
+                    <Brain className="h-4 w-4 text-white" />
                   </div>
                   <div className="text-left">
                     <h3 className="text-sm font-medium">Detailed</h3>
@@ -812,10 +652,10 @@ export const PracticeSession: React.FC = () => {
             </div>
 
             {evaluationType === 'detailed' && (
-              <div className="mt-3 p-2 bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-700 rounded-lg text-xs transition-colors duration-200">
+              <div className="mt-3 p-2 bg-[#964734]/10 dark:bg-[#024950] border border-[#964734] dark:border-[#024950] rounded-lg text-xs transition-colors duration-200">
                 <div className="flex items-start space-x-1.5">
-                  <AlertTriangle className="h-3.5 w-3.5 text-yellow-600 dark:text-yellow-400 mt-0.5 flex-shrink-0" />
-                  <p className="text-yellow-800 dark:text-yellow-200 transition-colors duration-200">
+                  <AlertTriangle className="h-3.5 w-3.5 text-[#964734] mt-0.5 flex-shrink-0" />
+                  <p className="text-[#964734] dark:text-[#AFDDE5] transition-colors duration-200">
                     Uses 2-3x more tokens than simple evaluation. May impact API limits.
                   </p>
                 </div>
@@ -824,34 +664,10 @@ export const PracticeSession: React.FC = () => {
           </div>
         </div>
 
-        {/* Simple Camera Monitor Component */}
-        {proctorMode === 'enabled' && (
-          <div className="mb-6">
-            <AdvancedCameraProctor
-              isEnabled={proctorMode === 'enabled'}
-              onCameraReady={handleCameraReady}
-              onViolation={handleViolation}
-              onFaceReport={handleReport}
-            />
-          </div>
-        )}
 
         {/* Configuration Options Row 2 - Compact Layout */}
         {canStartPractice && (
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
-            {/* AI Provider Selection */}
-            <AIProviderSelector
-              selectedProvider={selectedProvider}
-              onProviderChange={(provider) => {
-                setSelectedProvider(provider);
-                // Force the provider immediately for testing
-                AIEvaluationService.forceProvider(provider === 'auto' ? null : provider);
-                addDebugLog(`Provider set to: ${provider}`);
-              }}
-              availableKeys={availableKeys}
-              tokenLimits={tokenLimits}
-            />
-
+          <div className="grid grid-cols-1 gap-4 mb-6">
             {/* Rating Mode Selection */}
             <RatingModeSelector
               ratingMode={ratingMode}
@@ -862,11 +678,11 @@ export const PracticeSession: React.FC = () => {
 
         {/* Enhanced Mode Notice */}
         {canStartPractice && (
-          <div className="bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-700 rounded-xl p-3 mb-6 transition-colors duration-200">
+          <div className="bg-[#0FA4AF]/10 dark:bg-[#024950] border border-[#0FA4AF] dark:border-[#024950] rounded-xl p-3 mb-6 transition-colors duration-200">
             <div className="flex items-center space-x-2">
-              <Zap className="h-4 w-4 text-green-600 dark:text-green-400" />
-              <p className="text-sm text-green-800 dark:text-green-200 transition-colors duration-200">
-                <span className="font-medium">⚡ Ready for AI Evaluation:</span> {evaluationType === 'detailed' ? 'Comprehensive' : 'Standard'} evaluation with {selectedProvider !== 'auto' ? selectedProvider : 'auto-selected'} AI and {proctorMode === 'enabled' ? 'camera monitoring' : 'practice mode'}
+              <Zap className="h-4 w-4 text-[#0FA4AF]" />
+              <p className="text-sm text-[#003135] dark:text-[#AFDDE5] transition-colors duration-200">
+                <span className="font-medium">⚡ Ready for AI Evaluation:</span> {evaluationType === 'detailed' ? 'Comprehensive' : 'Standard'} evaluation with Gemini AI
               </p>
             </div>
           </div>

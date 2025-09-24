@@ -5,12 +5,12 @@ import { EvaluationRequest, EvaluationResponse } from './types';
 
 export class AIEvaluationService {
   // Check if any API keys are available
-  static hasApiKeys(): { groq: boolean; openai: boolean; gemini: boolean } {
-    return AIProviderManager.hasApiKeys();
+  static hasApiKeys(): { gemini: boolean } {
+    return { gemini: AIProviderManager.hasApiKeys().gemini };
   }
 
   // Force a specific provider for testing or debugging
-  static forceProvider(provider: 'groq' | 'openai' | 'gemini' | 'auto' | null) {
+  static forceProvider(provider: 'gemini' | 'auto' | null) {
     AIProviderManager.forceProvider(provider);
   }
 
@@ -21,10 +21,8 @@ export class AIEvaluationService {
     console.log('🔑 Available API keys for content generation:', availableKeys);
     console.log('🚫 Failed providers:', Array.from(AIProviderManager.getFailedProviders()));
     
-    // Get list of available providers in priority order (Groq -> OpenAI -> Gemini)
-    const providerPriority: Array<{ name: 'groq' | 'openai' | 'gemini', available: boolean }> = [
-      { name: 'groq', available: availableKeys.groq && AIProviderManager.isProviderAvailable('groq') },
-      { name: 'openai', available: availableKeys.openai && AIProviderManager.isProviderAvailable('openai') },
+    // Only use Gemini provider
+    const providerPriority: Array<{ name: 'gemini', available: boolean }> = [
       { name: 'gemini', available: availableKeys.gemini && AIProviderManager.isProviderAvailable('gemini') }
     ];
     
@@ -77,23 +75,12 @@ export class AIEvaluationService {
     console.log('📊 Evaluation type:', request.evaluationType || 'simple');
     console.log('🚫 Failed providers:', Array.from(AIProviderManager.getFailedProviders()));
     
-    // Get list of available providers in priority order (Groq -> OpenAI -> Gemini)
-    const providerPriority: Array<{ name: 'groq' | 'openai' | 'gemini', available: boolean }> = [
-      { name: 'groq', available: availableKeys.groq && AIProviderManager.isProviderAvailable('groq') },
-      { name: 'openai', available: availableKeys.openai && AIProviderManager.isProviderAvailable('openai') },
+    // Only use Gemini provider
+    const providerPriority: Array<{ name: 'gemini', available: boolean }> = [
       { name: 'gemini', available: availableKeys.gemini && AIProviderManager.isProviderAvailable('gemini') }
     ];
     
-    // If the user selected a specific provider in the UI, prioritize that one
-    if (request.selectedProvider && request.selectedProvider !== 'auto') {
-      // Move the selected provider to the front of the list
-      const selectedIndex = providerPriority.findIndex(p => p.name === request.selectedProvider);
-      if (selectedIndex !== -1) {
-        const selected = providerPriority.splice(selectedIndex, 1)[0];
-        providerPriority.unshift(selected);
-        console.log(`🔄 Prioritizing user-selected provider: ${selected.name}`);
-      }
-    }
+    // Only Gemini is available, no need for provider selection logic
     
     const availableProviders = providerPriority.filter(p => p.available);
     

@@ -337,7 +337,7 @@ export const ResumeReview: React.FC = () => {
                   <div className="mb-4">
                     <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-3 mb-2 transition-colors duration-200">
                       <div 
-                        className="bg-gradient-to-r from-orange-500 to-orange-600 dark:from-orange-600 dark:to-orange-500 h-3 rounded-full transition-all duration-500"
+                        className="bg-[#0FA4AF] h-3 rounded-full transition-all duration-500"
                         style={{ width: `${analysis.overallScore}%` }}
                       ></div>
                     </div>

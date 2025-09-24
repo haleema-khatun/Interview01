@@ -199,7 +199,7 @@ Respond with only the final cover letter content—no explanations, no markdown,
                 <div className="text-sm text-green-800 dark:text-green-200 transition-colors duration-200">
                   <p className="font-medium">🤖 AI Generation Active</p>
                   <p>
-                    Using {availableKeys.groq ? 'Groq (Fastest)' : availableKeys.openai ? 'OpenAI' : 'Gemini'} for intelligent cover letter generation with resume analysis!
+                    Using Gemini AI for intelligent cover letter generation with resume analysis!
                   </p>
                 </div>
               </div>

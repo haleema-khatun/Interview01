@@ -8,8 +8,54 @@ import { EvaluationHeader } from './EvaluationHeader';
 import { StatusNotifications } from './StatusNotifications';
 import { DetailedBreakdown } from './DetailedBreakdown';
 import { AdvancedLoader } from './AdvancedLoader';
-import { Brain, CheckCircle, AlertTriangle, Zap, Loader, MessageSquare, Lightbulb, Target, ArrowRight, Sparkles, Rocket, Award, Star, BookOpen, TrendingUp, BarChart3 } from 'lucide-react';
+import { Brain, CheckCircle, AlertTriangle, Zap, Loader, MessageSquare, Lightbulb, Target, ArrowRight, Sparkles, Rocket, Award, Star, BookOpen, TrendingUp, BarChart3, Code } from 'lucide-react';
 import toast from 'react-hot-toast';
+
+// Function to format model answer with better typography and code highlighting
+const formatModelAnswer = (text: string): string => {
+  if (!text) return '';
+  
+  let formatted = text;
+  
+  // Handle code blocks with proper language detection and formatting
+  formatted = formatted.replace(/```(\w+)?\s*([\s\S]*?)```/g, (match, language, code) => {
+    const lang = language || 'javascript';
+    const cleanCode = code.trim();
+    
+    return `<div class="my-6 rounded-lg overflow-hidden shadow-sm">
+      <div class="bg-[#003135] text-[#AFDDE5] px-4 py-2 text-xs font-semibold border-l-4 border-[#0FA4AF] flex items-center space-x-2">
+        <div class="w-3 h-3 bg-[#0FA4AF] rounded-full"></div>
+        <span>${lang.toUpperCase()}</span>
+      </div>
+      <pre class="bg-[#024950] text-[#AFDDE5] p-4 overflow-x-auto border-l-4 border-[#0FA4AF] font-mono text-sm leading-relaxed"><code class="language-${lang}">${cleanCode}</code></pre>
+    </div>`;
+  });
+  
+  // Handle inline code with better styling
+  formatted = formatted.replace(/`([^`]+)`/g, '<code class="bg-[#AFDDE5]/30 dark:bg-[#024950] text-[#003135] dark:text-[#AFDDE5] px-2 py-1 rounded font-mono text-sm border border-[#0FA4AF] dark:border-[#024950]">$1</code>');
+  
+  // Handle bold text with better contrast
+  formatted = formatted.replace(/\*\*([^*]+)\*\*/g, '<strong class="font-bold text-[#003135] dark:text-[#AFDDE5]">$1</strong>');
+  
+  // Handle bullet points with improved styling
+  formatted = formatted.replace(/^\* (.+)$/gm, '<div class="flex items-start space-x-3 my-3"><div class="w-2 h-2 bg-[#0FA4AF] rounded-full mt-2.5 flex-shrink-0"></div><span class="text-[#003135] dark:text-[#AFDDE5]">$1</span></div>');
+  
+  // Handle numbered lists with enhanced design
+  formatted = formatted.replace(/^(\d+)\. (.+)$/gm, '<div class="flex items-start space-x-3 my-3"><div class="bg-[#0FA4AF] text-white w-7 h-7 rounded-full flex items-center justify-center text-sm font-bold flex-shrink-0">$1</div><span class="text-[#003135] dark:text-[#AFDDE5] pt-1">$2</span></div>');
+  
+  // Handle section headers (lines starting with capital letters followed by colon)
+  formatted = formatted.replace(/^([A-Z][^:]*):$/gm, '<h4 class="text-lg font-bold text-[#003135] dark:text-[#AFDDE5] mt-6 mb-3 border-l-4 border-[#0FA4AF] pl-3">$1</h4>');
+  
+  // Handle paragraphs with better spacing
+  formatted = formatted.replace(/\n\s*\n/g, '</p><p class="mb-4 text-[#003135] dark:text-[#AFDDE5] leading-relaxed">');
+  formatted = '<p class="mb-4 text-[#003135] dark:text-[#AFDDE5] leading-relaxed">' + formatted + '</p>';
+  
+  // Clean up empty paragraphs and fix spacing
+  formatted = formatted.replace(/<p class="mb-4[^"]*"><\/p>/g, '');
+  formatted = formatted.replace(/<\/p>\s*<p class="mb-4[^"]*">/g, '</p><p class="mb-4 text-[#003135] dark:text-[#AFDDE5] leading-relaxed">');
+  
+  return formatted;
+};
 
 export const EvaluationResults: React.FC = () => {
   const { responseId } = useParams();
@@ -548,46 +594,74 @@ export const EvaluationResults: React.FC = () => {
           
           {suggestedAnswerExpanded && (
             <div className="p-6">
-              <div className="p-5 bg-gradient-to-r from-purple-50 to-pink-50 dark:from-purple-900/10 dark:to-pink-900/10 rounded-lg text-gray-700 dark:text-gray-300 text-sm leading-relaxed transition-colors duration-200 border border-purple-100 dark:border-purple-800/30">
-                <h4 className="text-base font-medium text-purple-800 dark:text-purple-300 mb-3">Model Answer:</h4>
-                <p className="mb-4">{evaluation.suggested_answer}</p>
-                
-                <div className="mt-4 pt-4 border-t border-purple-200 dark:border-purple-700/30">
-                  <h5 className="text-sm font-medium text-purple-800 dark:text-purple-300 mb-2">Why This Works:</h5>
-                  <ul className="space-y-2">
-                    <li className="flex items-start space-x-2">
-                      <div className="min-w-5 mt-0.5">
-                        <Star className="h-4 w-4 text-purple-600 dark:text-purple-400" />
+              <div className="bg-[#AFDDE5]/20 dark:bg-[#003135] rounded-xl border border-[#0FA4AF] dark:border-[#024950] overflow-hidden">
+                <div className="p-6">
+                  <div className="flex items-center space-x-3 mb-4">
+                    <div className="p-2 bg-[#0FA4AF]/20 dark:bg-[#024950] rounded-lg">
+                      <Star className="h-5 w-5 text-[#0FA4AF]" />
+                    </div>
+                    <h4 className="text-lg font-semibold text-[#003135] dark:text-[#AFDDE5]">Expert Model Answer</h4>
+                  </div>
+                  
+                  <div className="prose prose-sm max-w-none dark:prose-invert">
+                    <div className="bg-white dark:bg-[#024950] rounded-lg p-5 border border-[#AFDDE5] dark:border-[#024950] shadow-sm">
+                      <div 
+                        className="text-[#003135] dark:text-[#AFDDE5] leading-relaxed space-y-4"
+                        dangerouslySetInnerHTML={{
+                          __html: formatModelAnswer(evaluation.suggested_answer)
+                        }}
+                      />
+                    </div>
+                  </div>
+                  
+                  <div className="mt-6 pt-6 border-t border-[#0FA4AF] dark:border-[#024950]">
+                    <h5 className="text-base font-semibold text-[#003135] dark:text-[#AFDDE5] mb-4 flex items-center space-x-2">
+                      <div className="w-2 h-2 bg-[#0FA4AF] rounded-full"></div>
+                      <span>Why This Answer Excels</span>
+                    </h5>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div className="space-y-3">
+                        <div className="flex items-start space-x-3 p-3 bg-[#0FA4AF]/10 dark:bg-[#024950] rounded-lg border border-[#0FA4AF] dark:border-[#024950]">
+                          <div className="p-1 bg-[#0FA4AF]/20 dark:bg-[#024950] rounded">
+                            <CheckCircle className="h-4 w-4 text-[#0FA4AF]" />
+                          </div>
+                          <div>
+                            <div className="font-medium text-[#003135] dark:text-[#AFDDE5] text-sm">Structure & Clarity</div>
+                            <div className="text-[#003135]/80 dark:text-[#AFDDE5]/80 text-xs mt-1">Clear introduction, detailed explanation, practical examples</div>
+                          </div>
+                        </div>
+                        <div className="flex items-start space-x-3 p-3 bg-[#024950]/10 dark:bg-[#024950] rounded-lg border border-[#024950] dark:border-[#024950]">
+                          <div className="p-1 bg-[#024950]/20 dark:bg-[#024950] rounded">
+                            <Code className="h-4 w-4 text-[#024950] dark:text-[#0FA4AF]" />
+                          </div>
+                          <div>
+                            <div className="font-medium text-[#003135] dark:text-[#AFDDE5] text-sm">Technical Depth</div>
+                            <div className="text-[#003135]/80 dark:text-[#AFDDE5]/80 text-xs mt-1">Demonstrates deep understanding with examples</div>
+                          </div>
+                        </div>
                       </div>
-                      <span className="text-sm text-purple-800 dark:text-purple-200">
-                        Begins with a clear, direct response to the question
-                      </span>
-                    </li>
-                    <li className="flex items-start space-x-2">
-                      <div className="min-w-5 mt-0.5">
-                        <Star className="h-4 w-4 text-purple-600 dark:text-purple-400" />
+                      <div className="space-y-3">
+                        <div className="flex items-start space-x-3 p-3 bg-[#AFDDE5]/20 dark:bg-[#024950] rounded-lg border border-[#AFDDE5] dark:border-[#024950]">
+                          <div className="p-1 bg-[#AFDDE5]/30 dark:bg-[#024950] rounded">
+                            <BookOpen className="h-4 w-4 text-[#024950] dark:text-[#AFDDE5]" />
+                          </div>
+                          <div>
+                            <div className="font-medium text-[#003135] dark:text-[#AFDDE5] text-sm">Professional Tone</div>
+                            <div className="text-[#003135]/80 dark:text-[#AFDDE5]/80 text-xs mt-1">Confident yet approachable communication style</div>
+                          </div>
+                        </div>
+                        <div className="flex items-start space-x-3 p-3 bg-[#964734]/10 dark:bg-[#024950] rounded-lg border border-[#964734] dark:border-[#024950]">
+                          <div className="p-1 bg-[#964734]/20 dark:bg-[#024950] rounded">
+                            <Target className="h-4 w-4 text-[#964734]" />
+                          </div>
+                          <div>
+                            <div className="font-medium text-[#003135] dark:text-[#AFDDE5] text-sm">Relevance</div>
+                            <div className="text-[#003135]/80 dark:text-[#AFDDE5]/80 text-xs mt-1">Directly addresses all aspects of the question</div>
+                          </div>
+                        </div>
                       </div>
-                      <span className="text-sm text-purple-800 dark:text-purple-200">
-                        Uses specific examples with measurable outcomes
-                      </span>
-                    </li>
-                    <li className="flex items-start space-x-2">
-                      <div className="min-w-5 mt-0.5">
-                        <Star className="h-4 w-4 text-purple-600 dark:text-purple-400" />
                       </div>
-                      <span className="text-sm text-purple-800 dark:text-purple-200">
-                        Demonstrates both technical knowledge and soft skills
-                      </span>
-                    </li>
-                    <li className="flex items-start space-x-2">
-                      <div className="min-w-5 mt-0.5">
-                        <Star className="h-4 w-4 text-purple-600 dark:text-purple-400" />
                       </div>
-                      <span className="text-sm text-purple-800 dark:text-purple-200">
-                        Concludes by connecting past experience to future value
-                      </span>
-                    </li>
-                  </ul>
                 </div>
               </div>
               

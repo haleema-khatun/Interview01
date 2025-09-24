@@ -566,11 +566,11 @@ Keep insights concise and actionable.`;
           </div>
 
           <div className="flex items-center space-x-3 mb-4">
-            <div className="p-3 bg-gradient-to-r from-blue-600 to-purple-600 dark:from-blue-500 dark:to-purple-500 rounded-xl transition-colors duration-200">
+            <div className="p-3 bg-[#0FA4AF] dark:bg-[#024950] rounded-xl transition-colors duration-200">
               <Brain className="h-8 w-8 text-white" />
             </div>
             <div>
-              <h1 className="text-4xl font-bold bg-gradient-to-r from-gray-900 to-gray-600 dark:from-white dark:to-gray-300 bg-clip-text text-transparent transition-colors duration-200">
+              <h1 className="text-4xl font-bold text-[#003135] dark:text-[#AFDDE5] transition-colors duration-200">
                 AI Question Generator
               </h1>
               <p className="text-gray-600 dark:text-gray-400 transition-colors duration-200 mt-1">

@@ -225,7 +225,7 @@ Respond directly to what the user said without mentioning that this is a prompt 
   const hasAnyApiKey = availableKeys.groq || availableKeys.openai || availableKeys.gemini;
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-green-50 dark:from-gray-900 dark:via-gray-800 dark:to-gray-900 transition-colors duration-200">
+    <div className="min-h-screen bg-[#AFDDE5] dark:bg-[#003135] transition-colors duration-200">
       <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         {/* Enhanced Header */}
         <div className="mb-8">
@@ -239,13 +239,13 @@ Respond directly to what the user said without mentioning that this is a prompt 
 
           <div className="flex items-center space-x-4 mb-6">
             <div className="relative">
-              <div className="p-3 bg-gradient-to-r from-green-500 to-blue-500 rounded-2xl shadow-lg transition-all duration-200 hover:scale-105">
+              <div className="p-3 bg-[#0FA4AF] dark:bg-[#024950] rounded-2xl shadow-lg transition-all duration-200 hover:scale-105">
                 <Bot className="h-8 w-8 text-white" />
               </div>
-              <div className="absolute -top-1 -right-1 w-4 h-4 bg-green-400 rounded-full animate-pulse"></div>
+              <div className="absolute -top-1 -right-1 w-4 h-4 bg-[#964734] rounded-full animate-pulse"></div>
             </div>
             <div>
-              <h1 className="text-4xl font-bold bg-gradient-to-r from-green-600 to-blue-600 bg-clip-text text-transparent transition-colors duration-200">
+              <h1 className="text-4xl font-bold text-[#003135] dark:text-[#AFDDE5] transition-colors duration-200">
                 Interview GPT
               </h1>
               <p className="text-gray-600 dark:text-gray-400 transition-colors duration-200 text-lg">

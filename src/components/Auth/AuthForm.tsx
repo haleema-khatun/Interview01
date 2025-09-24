@@ -70,23 +70,23 @@ export const AuthForm: React.FC = () => {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-800 via-slate-700 to-slate-900 flex items-center justify-center px-4 py-12 transition-colors duration-200">
+    <div className="min-h-screen bg-[#003135] dark:bg-[#003135] flex items-center justify-center px-4 py-12 transition-colors duration-200">
       <div className="max-w-md w-full">
         {/* Logo */}
         <div className="text-center mb-8">
           <div className="flex justify-center mb-4">
-            <div className="p-4 bg-white/10 backdrop-blur-lg rounded-2xl shadow-2xl transition-all duration-200 hover:scale-105">
-              <Brain className="h-10 w-10 text-white" />
+            <div className="p-4 bg-[#0FA4AF]/20 backdrop-blur-lg rounded-2xl shadow-2xl transition-all duration-200 hover:scale-105 border border-[#0FA4AF]/30">
+              <Brain className="h-10 w-10 text-[#AFDDE5]" />
             </div>
           </div>
-          <h1 className="text-4xl font-bold text-white mb-2 transition-colors duration-200">InterviewAce</h1>
-          <p className="text-slate-200 text-lg transition-colors duration-200">
+          <h1 className="text-4xl font-bold text-[#AFDDE5] mb-2 transition-colors duration-200">InterviewAce</h1>
+          <p className="text-[#AFDDE5]/80 text-lg transition-colors duration-200">
             Master your interview skills with AI-powered feedback
           </p>
         </div>
 
         {/* Auth Form */}
-        <div className="bg-white/10 backdrop-blur-lg rounded-3xl shadow-2xl p-8 transition-all duration-200 border border-white/20">
+        <div className="bg-[#024950]/20 backdrop-blur-lg rounded-3xl shadow-2xl p-8 transition-all duration-200 border border-[#0FA4AF]/30">
           {!showEmailForm ? (
             <>
               <div className="mb-8">
