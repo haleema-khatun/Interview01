@@ -16,39 +16,58 @@ jobs:
     if: github.event_name == 'issues'
     runs-on: ubuntu-latest
     steps:
-      - name: Assign the issue
+      - name: Assign the issue and add labels
         uses: actions/github-script@v6
         with:
           script: |
             const issueNumber = context.issue.number;
             const issueCreator = context.payload.issue.user.login;
-            console.log(`Assigning issue #${issueNumber} to ${issueCreator}.`);
-            await github.rest.issues.addAssignees({
+
+            // Get current labels
+            const { data: currentLabels } = await github.rest.issues.listLabelsOnIssue({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: issueNumber
+            });
+            const labelNames = currentLabels.map(l => l.name);
+
+            // Assign if not already assigned
+            const isAssigned = context.payload.issue.assignees && context.payload.issue.assignees.length > 0;
+            if (!isAssigned) {
+              console.log(`Assigning issue #${issueNumber} to ${issueCreator}.`);
+              await github.rest.issues.addAssignees({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: issueNumber,
+                assignees: [issueCreator]
+              });
+            } else {
+              console.log(`Issue #${issueNumber} is already assigned.`);
+            }
+
+            // Add comment if not already present
+            await github.rest.issues.createComment({
               owner: context.repo.owner,
               repo: context.repo.repo,
               issue_number: issueNumber,
-              assignees: [issueCreator]
+              body: `Hello @${issueCreator}! This issue has been assigned to you.`
             });
 
-      - name: Add assignment message
-        uses: peter-evans/create-or-update-comment@v3
-        with:
-          issue-number: ${{ github.event.issue.number }}
-          body: |
-            Hello @${{ github.event.issue.user.login }}! This issue has been assigned to you.
+            // Labels to ensure
+            const requiredLabels = ['assigned', 'gssoc2025', 'gssoc', 'gssoc25'];
+            const labelsToAdd = requiredLabels.filter(l => !labelNames.includes(l));
 
-      - name: Add 'assigned' label and GSSoC tags
-        uses: actions/github-script@v6
-        with:
-          script: |
-            const issueNumber = context.issue.number;
-            console.log(`Adding labels to issue #${issueNumber}.`);
-            await github.rest.issues.addLabels({
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              issue_number: issueNumber,
-              labels: ['assigned', 'gssoc2025', 'gssoc', 'gssoc25']
-            });
+            if (labelsToAdd.length > 0) {
+              console.log(`Adding labels: ${labelsToAdd.join(', ')} to issue #${issueNumber}.`);
+              await github.rest.issues.addLabels({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: issueNumber,
+                labels: labelsToAdd
+              });
+            } else {
+              console.log(`All required labels already present for issue #${issueNumber}.`);
+            }
 
   process-old-issues:
     if: github.event_name == 'workflow_dispatch'
@@ -60,6 +79,7 @@ jobs:
           script: |
             const owner = context.repo.owner;
             const repo = context.repo.repo;
+
             console.log('Looking for old and unassigned issues...');
             const { data: issues } = await github.rest.issues.listForRepo({
               owner,
@@ -68,15 +88,19 @@ jobs:
               per_page: 100
             });
 
+            const requiredLabels = ['assigned', 'gssoc2025', 'gssoc', 'gssoc25'];
+
             for (const issue of issues) {
               const issueNumber = issue.number;
               const issueCreator = issue.user.login;
+
+              // Current labels
+              const labelNames = issue.labels.map(l => l.name);
+              const labelsToAdd = requiredLabels.filter(l => !labelNames.includes(l));
+
+              // Assign if not already assigned
               const isAssigned = issue.assignees && issue.assignees.length > 0;
-              const hasAssignedLabel = issue.labels.some(label => label.name === 'assigned');
-
-              if (!isAssigned && !hasAssignedLabel) {
-                console.log(`Processing issue #${issueNumber}: No assignees and no 'assigned' label.`);
-
+              if (!isAssigned) {
                 try {
                   await github.rest.issues.addAssignees({
                     owner,
@@ -88,32 +112,38 @@ jobs:
                 } catch (error) {
                   console.error(`Error assigning issue #${issueNumber}: ${error.message}`);
                 }
+              } else {
+                console.log(`Issue #${issueNumber} is already assigned.`);
+              }
 
-                try {
-                  await github.rest.issues.createComment({
-                    owner,
-                    repo,
-                    issue_number: issueNumber,
-                    body: `Hello @${issueCreator}! This issue has been assigned to you.`
-                  });
-                  console.log(`Comment added to issue #${issueNumber}.`);
-                } catch (error) {
-                  console.error(`Error adding comment to issue #${issueNumber}: ${error.message}`);
-                }
+              // Add comment
+              try {
+                await github.rest.issues.createComment({
+                  owner,
+                  repo,
+                  issue_number: issueNumber,
+                  body: `Hello @${issueCreator}! This issue has been assigned to you.`
+                });
+                console.log(`Comment added to issue #${issueNumber}.`);
+              } catch (error) {
+                console.error(`Error adding comment to issue #${issueNumber}: ${error.message}`);
+              }
 
+              // Add missing labels
+              if (labelsToAdd.length > 0) {
                 try {
                   await github.rest.issues.addLabels({
                     owner,
                     repo,
                     issue_number: issueNumber,
-                    labels: ['assigned', 'gssoc2025', 'gssoc', 'gssoc25']
+                    labels: labelsToAdd
                   });
-                  console.log(`'assigned' and GSSoC tags added to issue #${issueNumber}.`);
+                  console.log(`Added missing labels: ${labelsToAdd.join(', ')} to issue #${issueNumber}.`);
                 } catch (error) {
                   console.error(`Error adding labels to issue #${issueNumber}: ${error.message}`);
                 }
               } else {
-                console.log(`Skipping issue #${issueNumber}: Already assigned or has 'assigned' label.`);
+                console.log(`All required labels already present for issue #${issueNumber}.`);
               }
             }
             console.log('Finished processing old issues.');
