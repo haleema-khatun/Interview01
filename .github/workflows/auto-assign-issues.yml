@@ -1,13 +1,11 @@
 # Name of the workflow
-name: Automatic Issue Assignment and Labeling
+name: Automatic Issue Assignment and Colorful Labeling
 
-# Events that trigger the workflow
 on:
   issues:
     types: [opened, reopened]
   workflow_dispatch:
 
-# Permissions required for the workflow
 permissions:
   issues: write
 
@@ -16,20 +14,28 @@ jobs:
     if: github.event_name == 'issues'
     runs-on: ubuntu-latest
     steps:
-      - name: Assign the issue and add labels
+      - name: Assign and label issue with colors
         uses: actions/github-script@v6
         with:
           script: |
             const issueNumber = context.issue.number;
             const issueCreator = context.payload.issue.user.login;
 
-            // Get current labels
+            // Define required labels and their colors
+            const requiredLabels = [
+              { name: 'assigned', color: '0E8A16' },     // green
+              { name: 'gssoc2025', color: 'B60205' },   // red
+              { name: 'gssoc', color: 'FBCA04' },       // yellow
+              { name: 'gssoc25', color: '1D76DB' }      // blue
+            ];
+
+            // Get existing labels on the issue
             const { data: currentLabels } = await github.rest.issues.listLabelsOnIssue({
               owner: context.repo.owner,
               repo: context.repo.repo,
               issue_number: issueNumber
             });
-            const labelNames = currentLabels.map(l => l.name);
+            const existingLabelNames = currentLabels.map(l => l.name);
 
             // Assign if not already assigned
             const isAssigned = context.payload.issue.assignees && context.payload.issue.assignees.length > 0;
@@ -45,7 +51,7 @@ jobs:
               console.log(`Issue #${issueNumber} is already assigned.`);
             }
 
-            // Add comment if not already present
+            // Add comment
             await github.rest.issues.createComment({
               owner: context.repo.owner,
               repo: context.repo.repo,
@@ -53,20 +59,34 @@ jobs:
               body: `Hello @${issueCreator}! This issue has been assigned to you.`
             });
 
-            // Labels to ensure
-            const requiredLabels = ['assigned', 'gssoc2025', 'gssoc', 'gssoc25'];
-            const labelsToAdd = requiredLabels.filter(l => !labelNames.includes(l));
-
-            if (labelsToAdd.length > 0) {
-              console.log(`Adding labels: ${labelsToAdd.join(', ')} to issue #${issueNumber}.`);
-              await github.rest.issues.addLabels({
-                owner: context.repo.owner,
-                repo: context.repo.repo,
-                issue_number: issueNumber,
-                labels: labelsToAdd
-              });
-            } else {
-              console.log(`All required labels already present for issue #${issueNumber}.`);
+            // Add missing labels with colors
+            for (const label of requiredLabels) {
+              if (!existingLabelNames.includes(label.name)) {
+                // Check if the label exists globally in repo, else create it
+                try {
+                  await github.rest.issues.getLabel({
+                    owner: context.repo.owner,
+                    repo: context.repo.repo,
+                    name: label.name
+                  });
+                } catch (err) {
+                  console.log(`Label ${label.name} does not exist, creating it.`);
+                  await github.rest.issues.createLabel({
+                    owner: context.repo.owner,
+                    repo: context.repo.repo,
+                    name: label.name,
+                    color: label.color
+                  });
+                }
+                // Add label to the issue
+                await github.rest.issues.addLabels({
+                  owner: context.repo.owner,
+                  repo: context.repo.repo,
+                  issue_number: issueNumber,
+                  labels: [label.name]
+                });
+                console.log(`Added label ${label.name} to issue #${issueNumber}.`);
+              }
             }
 
   process-old-issues:
@@ -80,6 +100,13 @@ jobs:
             const owner = context.repo.owner;
             const repo = context.repo.repo;
 
+            const requiredLabels = [
+              { name: 'assigned', color: '0E8A16' },     
+              { name: 'gssoc2025', color: 'B60205' },   
+              { name: 'gssoc', color: 'FBCA04' },       
+              { name: 'gssoc25', color: '1D76DB' }      
+            ];
+
             console.log('Looking for old and unassigned issues...');
             const { data: issues } = await github.rest.issues.listForRepo({
               owner,
@@ -88,17 +115,12 @@ jobs:
               per_page: 100
             });
 
-            const requiredLabels = ['assigned', 'gssoc2025', 'gssoc', 'gssoc25'];
-
             for (const issue of issues) {
               const issueNumber = issue.number;
               const issueCreator = issue.user.login;
+              const existingLabelNames = issue.labels.map(l => l.name);
 
-              // Current labels
-              const labelNames = issue.labels.map(l => l.name);
-              const labelsToAdd = requiredLabels.filter(l => !labelNames.includes(l));
-
-              // Assign if not already assigned
+              // Assign if not assigned
               const isAssigned = issue.assignees && issue.assignees.length > 0;
               if (!isAssigned) {
                 try {
@@ -129,21 +151,35 @@ jobs:
                 console.error(`Error adding comment to issue #${issueNumber}: ${error.message}`);
               }
 
-              // Add missing labels
-              if (labelsToAdd.length > 0) {
-                try {
-                  await github.rest.issues.addLabels({
-                    owner,
-                    repo,
-                    issue_number: issueNumber,
-                    labels: labelsToAdd
-                  });
-                  console.log(`Added missing labels: ${labelsToAdd.join(', ')} to issue #${issueNumber}.`);
-                } catch (error) {
-                  console.error(`Error adding labels to issue #${issueNumber}: ${error.message}`);
+              // Add missing labels with colors
+              for (const label of requiredLabels) {
+                if (!existingLabelNames.includes(label.name)) {
+                  // Check if the label exists globally
+                  try {
+                    await github.rest.issues.getLabel({ owner, repo, name: label.name });
+                  } catch (err) {
+                    console.log(`Label ${label.name} does not exist, creating it.`);
+                    await github.rest.issues.createLabel({
+                      owner,
+                      repo,
+                      name: label.name,
+                      color: label.color
+                    });
+                  }
+
+                  try {
+                    await github.rest.issues.addLabels({
+                      owner,
+                      repo,
+                      issue_number: issueNumber,
+                      labels: [label.name]
+                    });
+                    console.log(`Added label ${label.name} to issue #${issueNumber}.`);
+                  } catch (err) {
+                    console.error(`Error adding label ${label.name} to issue #${issueNumber}: ${err.message}`);
+                  }
                 }
-              } else {
-                console.log(`All required labels already present for issue #${issueNumber}.`);
               }
             }
+
             console.log('Finished processing old issues.');
