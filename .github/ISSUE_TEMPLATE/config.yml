@@ -1,0 +1,5 @@
+blank_issues_enabled: false
+contact_links:
+  - name: GSSoC 2025 Support
+    url: https://github.com/<your-username>/<your-repo>/discussions
+    about: For general questions or help regarding GSSoC 2025 issues
