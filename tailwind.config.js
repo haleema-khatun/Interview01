@@ -27,6 +27,8 @@ export default {
         'slide-up': 'slideUp 0.3s ease-out',
         'scale-in': 'scaleIn 0.2s ease-out',
         'pulse-slow': 'pulse 3s cubic-bezier(0.4, 0, 0.6, 1) infinite',
+        // Added for the testimonial scroll
+        'scroll': 'scroll 60s linear infinite',
       },
       keyframes: {
         fadeIn: {
@@ -40,6 +42,11 @@ export default {
         scaleIn: {
           '0%': { transform: 'scale(0.95)', opacity: '0' },
           '100%': { transform: 'scale(1)', opacity: '1' },
+        },
+        // Added for the testimonial scroll
+        scroll: {
+            '0%': { transform: 'translateX(0)' },
+            '100%': { transform: 'translateX(-50%)' },
         },
       },
       boxShadow: {
