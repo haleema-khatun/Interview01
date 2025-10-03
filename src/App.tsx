@@ -23,6 +23,7 @@ import { HistoryPage } from './components/History/HistoryPage';
 import { Settings } from './components/Settings/Settings';
 import { Profile } from './components/Profile/Profile';
 import { Helmet } from 'react-helmet';
+import { AptitudePage } from './pages/AptitudePage';
 
 const ProtectedRoute: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const { user, loading } = useAuth();
@@ -266,5 +267,23 @@ function App() {
     </ThemeProvider>
   );
 }
+function App() {
+  return (
+    <Router>
+      <Layout>
+        <Routes>
+          <Route path="/" element={<Home />} />
+          <Route path="/practice" element={<Practice />} />
+          <Route path="/study-plan" element={<StudyPlan />} />
+          <Route path="/aptitude" element={<AptitudePage />} /> {/* ⭐ ADD THIS */}
+          <Route path="/ai-tools" element={<AITools />} />
+          <Route path="/job-tools" element={<JobTools />} />
+          <Route path="/history" element={<History />} />
+        </Routes>
+      </Layout>
+    </Router>
+  );
+}
+
 
 export default App;
