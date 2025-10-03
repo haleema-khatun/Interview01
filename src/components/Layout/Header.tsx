@@ -25,7 +25,7 @@ import {
   Clock,
   Search,
   Bell,
-  CheckCircle
+  CheckCircle,
   Calculator
 } from 'lucide-react';
 

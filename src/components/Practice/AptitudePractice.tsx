@@ -22,7 +22,7 @@ import {
   AptitudeQuestion,
   getQuestionsByCategory,
   getRandomQuestions 
-} from '../../data/aptitudeQuestions';
+} src/data/questions/aptitudeQuestions.ts
 
 interface QuizState {
   currentQuestionIndex: number;

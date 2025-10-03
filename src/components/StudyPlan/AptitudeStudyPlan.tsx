@@ -215,6 +215,10 @@ const aptitudeStudyPlans: Record<string, StudyPlanData> = {
 
 const AptitudeStudyPlan: React.FC<StudyPlanProps> = ({ type }) => {
   const plan = aptitudeStudyPlans[type];
+    
+  if (!plan) {
+    return <div>Invalid plan type</div>;
+  }
 
   const difficultyColor: Record<string, string> = {
     beginner: 'bg-green-100 text-green-700',
