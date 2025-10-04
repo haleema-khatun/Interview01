@@ -264,9 +264,11 @@ const AptitudeStudyPlan: React.FC<StudyPlanProps> = ({ type }) => {
               {day.topics[0]}
             </span>
           ))}
-          <span className="px-2 py-1 text-xs bg-gray-100 text-gray-700 rounded">
-            +{plan.schedule.length - 4} more
-          </span>
+          {plan.schedule.length > 4 && (
+            <span className="px-2 py-1 text-xs bg-gray-100 text-gray-700 rounded">
+              {plan.schedule.length - 4} more
+            </span>
+          )}
         </div>
       </div>
 

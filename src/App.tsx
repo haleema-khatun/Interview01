@@ -276,23 +276,5 @@ function App() {
     </ThemeProvider>
   );
 }
-function App() {
-  return (
-    <Router>
-      <Layout>
-        <Routes>
-          <Route path="/" element={<Home />} />
-          <Route path="/practice" element={<Practice />} />
-          <Route path="/study-plan" element={<StudyPlan />} />
-          <Route path="/aptitude" element={<AptitudePage />} /> {/* ⭐ ADD THIS */}
-          <Route path="/ai-tools" element={<AITools />} />
-          <Route path="/job-tools" element={<JobTools />} />
-          <Route path="/history" element={<History />} />
-        </Routes>
-      </Layout>
-    </Router>
-  );
-}
-
 
 export default App;

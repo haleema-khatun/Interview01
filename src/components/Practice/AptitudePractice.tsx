@@ -22,7 +22,7 @@ import {
   AptitudeQuestion,
   getQuestionsByCategory,
   getRandomQuestions 
-} src/data/questions/aptitudeQuestions.ts
+} from 'src/data/questions/aptitudeQuestions.ts';
 
 interface QuizState {
   currentQuestionIndex: number;
@@ -84,6 +84,7 @@ const AptitudePractice: React.FC = () => {
 
   const handleRandomPractice = () => {
     const randomQs = getRandomQuestions(20);
+    const total = randomQs.length;
     setSelectedCategory('Mixed Practice');
     setQuestions(randomQs);
     setQuizState({
